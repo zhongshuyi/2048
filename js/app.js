@@ -565,9 +565,9 @@
       if (window.Storage2048) window.Storage2048.setBestScore(this.best);
     }
 
-    // During battle: send to server after local render (fire-and-forget)
+    // During battle: send to server after local render
     if (this.mode === "playing" && this.battle) {
-      this.battle.sendMove(direction);
+      this.battle.sendMove(direction, result.state, result.reached2048, result.gameOver);
     }
 
     this.locked = true;

@@ -180,38 +180,37 @@ async def handle_move(ws, data):
     player_key = f"player{player_num}"
     opponent_key = f"player{1 if player_num == 2 else 2}"
 
-    server_state = game[player_key]["state"]
-    new_state, moved, score_gained, reached2048, game_over, events = engine_move(
-        server_state, direction
-    )
-
-    if not moved:
-        if game_over:
-            player_dead(game, player_num, opponent_key)
+    # Client sends its own state after local move. Server trusts it (casual game).
+    claimed = data.get("state", {})
+    if not claimed:
+        await ws.send_json({"type": "error", "message": "Missing state"})
         return
 
-    game[player_key]["state"] = new_state
-    game[player_key]["score"] = new_state["score"]
+    game[player_key]["score"] = claimed.get("score", 0)
+    game[player_key]["state"]["grid"] = claimed.get("grid", [])
 
-    # Broadcast to opponent
+    # Broadcast to opponent (value grid for display)
     opponent_ws = game[opponent_key]["ws"]
-    val_grid = grid_to_values(new_state)
     try:
         await opponent_ws.send_json({
             "type": "opponent_move",
-            "grid": val_grid,
-            "score": new_state["score"],
+            "grid": claimed.get("grid", []),
+            "score": claimed.get("score", 0),
         })
     except Exception:
         pass
 
-    # Check win conditions
-    if game["mode"] == "race" and reached2048:
+    # Check win: 2048 reached
+    if game["mode"] == "race" and claimed.get("reached2048"):
         await _end_game(game, winner=player_num, reason="2048")
         return
 
-    if game_over:
-        player_dead(game, player_num, opponent_key)
+    # Check win: board dead
+    if claimed.get("gameOver"):
+        if game["mode"] == "race":
+            await _end_game(game, winner=(1 if player_num == 2 else 2), reason="dead")
+        else:
+            player_dead(game, player_num, opponent_key)
 
 
 async def handle_rematch(ws):

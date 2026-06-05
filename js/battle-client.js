@@ -142,14 +142,19 @@
     });
   };
 
-  BattleClient.prototype.sendMove = function (direction) {
+  BattleClient.prototype.sendMove = function (direction, state, reached2048, gameOver) {
     // Throttle: only send latest move every 80ms
-    this._pendingDir = direction;
+    this._pending = { direction: direction, grid: state.grid, score: state.score, reached2048: reached2048, gameOver: gameOver };
     if (this._sendTimer) return;
     var self = this;
     this._sendTimer = setTimeout(function () {
       self._sendTimer = null;
-      self.send({ type: "move", direction: self._pendingDir });
+      var p = self._pending;
+      self.send({
+        type: "move",
+        direction: p.direction,
+        state: { grid: p.grid, score: p.score, reached2048: p.reached2048, gameOver: p.gameOver },
+      });
     }, 80);
   };
 
