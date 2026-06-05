@@ -144,7 +144,8 @@
 
   BattleClient.prototype.sendMove = function (direction, state, reached2048, gameOver) {
     // Throttle: only send latest move every 80ms
-    this._pending = { direction: direction, grid: state.grid, score: state.score, reached2048: reached2048, gameOver: gameOver };
+    var valGrid = this.gridToValues(state.grid, state.tiles, state.size);
+    this._pending = { direction: direction, grid: valGrid, score: state.score, reached2048: reached2048, gameOver: gameOver };
     if (this._sendTimer) return;
     var self = this;
     this._sendTimer = setTimeout(function () {
@@ -156,6 +157,19 @@
         state: { grid: p.grid, score: p.score, reached2048: p.reached2048, gameOver: p.gameOver },
       });
     }, 80);
+  };
+
+  BattleClient.prototype.gridToValues = function (grid, tiles, size) {
+    var result = [];
+    for (var r = 0; r < size; r++) {
+      var row = [];
+      for (var c = 0; c < size; c++) {
+        var tid = grid[r][c];
+        row.push(tid && tiles[tid] ? tiles[tid].value : 0);
+      }
+      result.push(row);
+    }
+    return result;
   };
 
   BattleClient.prototype.sendRematch = function () {
