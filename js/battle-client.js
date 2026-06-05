@@ -179,25 +179,29 @@
     this.stopTimer();
     this.timerEndAt = Date.now() + totalSeconds * 1000;
     this.timerRunning = true;
+    this.countDown = countDown;
+    this.totalSeconds = totalSeconds;
 
     var update = function () {
-      var remaining;
+      if (!self.timerRunning) return;
+      var now = Date.now();
+      var remainingMs = self.timerEndAt - now;
+
       if (countDown) {
-        remaining = Math.max(0, Math.ceil((self.timerEndAt - Date.now()) / 1000));
+        if (remainingMs <= 0) {
+          self.renderTimerMs(0, true);
+          self.stopTimer();
+          return;
+        }
+        self.renderTimerMs(remainingMs, true);
       } else {
-        var elapsed = Math.floor((Date.now() - (self.timerEndAt - totalSeconds * 1000)) / 1000);
+        var elapsed = Math.floor((now - (self.timerEndAt - totalSeconds * 1000)) / 1000);
         self.renderTimer(elapsed, false);
-        if (!self.timerRunning) return;
-        return;
-      }
-      self.renderTimer(remaining, countDown);
-      if (countDown && remaining <= 0) {
-        self.stopTimer();
       }
     };
 
     update();
-    this.timerInterval = setInterval(update, 250);
+    this.timerInterval = setInterval(update, 50);
   };
 
   BattleClient.prototype.stopTimer = function () {
@@ -208,17 +212,33 @@
     this.timerRunning = false;
   };
 
+  BattleClient.prototype.renderTimerMs = function (remainingMs, isCountdown) {
+    if (!this.timerEl) return;
+    var totalSec = remainingMs / 1000;
+    var mins = Math.floor(totalSec / 60);
+    var secs = Math.floor(totalSec % 60);
+
+    // Last 10 seconds: show milliseconds
+    if (totalSec <= 10) {
+      var tenths = Math.floor((totalSec - Math.floor(totalSec)) * 10);
+      this.timerEl.textContent = secs + "." + tenths;
+      this.timerEl.classList.add("timer-pulse");
+    } else {
+      this.timerEl.textContent = mins + ":" + (secs < 10 ? "0" : "") + secs;
+      if (totalSec <= 30) {
+        this.timerEl.classList.add("timer-pulse");
+      } else {
+        this.timerEl.classList.remove("timer-pulse");
+      }
+    }
+  };
+
   BattleClient.prototype.renderTimer = function (seconds, isCountdown) {
     if (!this.timerEl) return;
     var mins = Math.floor(seconds / 60);
     var secs = seconds % 60;
     this.timerEl.textContent = mins + ":" + (secs < 10 ? "0" : "") + secs;
-
-    if (isCountdown && seconds <= 30) {
-      this.timerEl.classList.add("timer-pulse");
-    } else {
-      this.timerEl.classList.remove("timer-pulse");
-    }
+    this.timerEl.classList.remove("timer-pulse");
   };
 
   BattleClient.prototype.renderOpponentMini = function (grid, size) {

@@ -264,6 +264,9 @@
     this.els.tryAgainBtn.addEventListener("click", function () {
       if (self.mode === "playing" && self.battle) {
         self.battle.sendRematch();
+        self.els.rematchBtn.textContent = "等待对手...";
+        self.els.rematchBtn.disabled = true;
+        self.els.rematchBtn.classList.add("disabled");
         return;
       }
       self.reset();
@@ -271,6 +274,10 @@
     if (this.els.rematchBtn) {
       this.els.rematchBtn.addEventListener("click", function () {
         if (self.battle) self.battle.sendRematch();
+        // Show waiting feedback
+        self.els.rematchBtn.textContent = "等待对手...";
+        self.els.rematchBtn.disabled = true;
+        self.els.rematchBtn.classList.add("disabled");
       });
     }
     if (this.els.backToMenuBtn) {
@@ -399,6 +406,9 @@
 
     this.locked = false;
     this.pendingDirection = null;
+    this.els.rematchBtn.textContent = "再来一局";
+    this.els.rematchBtn.disabled = false;
+    this.els.rematchBtn.classList.remove("disabled");
     this.bindInput();
   };
 
@@ -447,6 +457,9 @@
     this.pendingDirection = null;
     this.renderer.hideOverlay();
     this.state = null;
+    this.els.rematchBtn.textContent = "再来一局";
+    this.els.rematchBtn.disabled = false;
+    this.els.rematchBtn.classList.remove("disabled");
     this.setMode("solo");
     this.switchTab("solo");
     this.enterLobby();
