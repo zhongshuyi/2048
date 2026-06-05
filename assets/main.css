@@ -675,8 +675,8 @@ body {
 }
 
 .opp-mini-board {
-  width: 90px;
-  height: 90px;
+  width: 110px;
+  height: 110px;
   background: var(--board-bg);
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.12);
@@ -718,8 +718,8 @@ body {
     gap: 4px;
   }
   .opp-mini-board {
-    width: 70px;
-    height: 70px;
+    width: 90px;
+    height: 90px;
   }
 }
 

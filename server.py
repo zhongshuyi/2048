@@ -187,19 +187,19 @@ async def handle_move(ws, data):
 
     if not moved:
         if game_over:
-            # This player has no valid moves — opponent wins
-            await _end_game(game, winner=(1 if player_num == 2 else 2), reason="dead")
+            player_dead(game, player_num, opponent_key)
         return
 
     game[player_key]["state"] = new_state
     game[player_key]["score"] = new_state["score"]
 
-    # Send opponent update
+    # Send opponent update (grid with values, not IDs)
     opponent_ws = game[opponent_key]["ws"]
+    val_grid = grid_to_values(new_state)
     try:
         await opponent_ws.send_json({
             "type": "opponent_move",
-            "grid": new_state["grid"],
+            "grid": val_grid,
             "score": new_state["score"],
             "events": events,
         })
@@ -212,8 +212,7 @@ async def handle_move(ws, data):
         return
 
     if game_over:
-        # This player's board is now dead after the move — opponent wins
-        await _end_game(game, winner=(1 if player_num == 2 else 2), reason="dead")
+        player_dead(game, player_num, opponent_key)
 
 
 async def handle_rematch(ws):
@@ -278,6 +277,41 @@ async def handle_disconnect(ws):
 
 # --- Helpers ---
 
+async def player_dead(game, player_num, opponent_key):
+    """Handle a player's board reaching dead state. Mode-aware."""
+    game[f"player{player_num}"]["dead"] = True
+    opp_num = 1 if player_num == 2 else 2
+    opponent_ws = game[opponent_key]["ws"]
+    # Notify opponent that this player is dead
+    try:
+        await opponent_ws.send_json({
+            "type": "opponent_dead",
+            "dead_player": player_num,
+        })
+    except Exception:
+        pass
+    # Race mode: immediate loss
+    if game["mode"] == "race":
+        await _end_game(game, winner=opp_num, reason="dead")
+        return
+    # Timed mode: check if both dead
+    if game["player1"].get("dead") and game["player2"].get("dead"):
+        await _end_game(game, reason="dead")
+
+
+def grid_to_values(state):
+    """Convert grid of tile IDs to grid of tile values."""
+    tiles = state["tiles"]
+    size = state["size"]
+    result = [[0] * size for _ in range(size)]
+    for r in range(size):
+        for c in range(size):
+            tid = state["grid"][r][c]
+            if tid != 0 and tid in tiles:
+                result[r][c] = tiles[tid]["value"]
+    return result
+
+
 def _make_board_payload(state):
     """Serialize game state for client consumption."""
     return {
@@ -289,6 +323,15 @@ def _make_board_payload(state):
     }
 
 
+def _make_opponent_board(state):
+    """Serialize opponent board with values (not IDs) for mini-board display."""
+    return {
+        "size": state["size"],
+        "score": state["score"],
+        "grid": grid_to_values(state),
+    }
+
+
 async def _send_start(ws, game, player_num):
     """Send the 'start' message to a player."""
     own_key = f"player{player_num}"
@@ -297,7 +340,7 @@ async def _send_start(ws, game, player_num):
         "type": "start",
         "game_id": game["id"],
         "your_board": _make_board_payload(game[own_key]["state"]),
-        "opponent_board": _make_board_payload(game[opp_key]["state"]),
+        "opponent_board": _make_opponent_board(game[opp_key]["state"]),
         "opponent_nickname": game[opp_key]["nickname"],
         "mode": game["mode"],
         "time": game.get("time"),

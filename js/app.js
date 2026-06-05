@@ -56,6 +56,8 @@
       matchBtn: byId("matchBtn"),
       myName: byId("myName"),
       myScore: byId("myScore"),
+      oppName: byId("oppName"),
+      oppScore: byId("oppScore"),
       oppBoardWrap: byId("oppBoardWrap"),
     };
   }
@@ -382,6 +384,7 @@
     this.setMode("playing");
 
     this.els.myName.textContent = this.battle.nickname;
+    if (this.els.oppName) this.els.oppName.textContent = msg.opponent_nickname;
     this.gridSize = msg.gridSize;
     this.renderer.setSize(msg.gridSize);
 

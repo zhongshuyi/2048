@@ -245,8 +245,8 @@
     if (!this.oppBoardContainer) return;
     var container = this.oppBoardContainer;
     container.innerHTML = "";
-    var cellGap = Math.max(1, Math.floor(90 / (size * 5)));
-    var cellSize = Math.floor((90 - cellGap * (size + 1)) / size);
+    var cellGap = Math.max(1, Math.floor(110 / (size * 5)));
+    var cellSize = Math.floor((110 - cellGap * (size + 1)) / size);
 
     container.style.display = "grid";
     container.style.gridTemplateColumns = "repeat(" + size + ", " + cellSize + "px)";
@@ -257,12 +257,10 @@
     for (var r = 0; r < size; r++) {
       for (var c = 0; c < size; c++) {
         var cell = document.createElement("div");
-        var id = grid[r][c];
-        if (id !== 0 && id !== "0") {
-          var tile = this.app.state.tiles[id];
-          var value = tile ? tile.value : 0;
+        var value = grid[r][c] || 0;
+        if (value > 0) {
           cell.style.background = this.tileColor(value);
-          cell.textContent = value > 0 ? this.tileText(value) : "";
+          cell.textContent = this.tileText(value);
           cell.style.color = value >= 8 ? "#f9f6f2" : "#776e65";
           cell.style.fontWeight = "700";
           cell.style.fontSize = Math.max(9, cellSize * 0.5) + "px";
