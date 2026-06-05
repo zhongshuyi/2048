@@ -143,7 +143,14 @@
   };
 
   BattleClient.prototype.sendMove = function (direction) {
-    this.send({ type: "move", direction: direction });
+    // Throttle: only send latest move every 80ms
+    this._pendingDir = direction;
+    if (this._sendTimer) return;
+    var self = this;
+    this._sendTimer = setTimeout(function () {
+      self._sendTimer = null;
+      self.send({ type: "move", direction: self._pendingDir });
+    }, 80);
   };
 
   BattleClient.prototype.sendRematch = function () {
@@ -162,9 +169,6 @@
         break;
       case "start":
         this.app.onBattleStart(msg);
-        break;
-      case "move_ack":
-        this.app.onMoveAck(msg);
         break;
       case "opponent_move":
         this.app.onOpponentMove(msg);
