@@ -42,18 +42,19 @@
       panelSolo: byId("panelSolo"),
       panelRoom: byId("panelRoom"),
       panelMatch: byId("panelMatch"),
+      panelWaiting: byId("panelWaiting"),
+      waitingTitle: byId("waitingTitle"),
+      waitingCode: byId("waitingCode"),
+      waitingCodeText: byId("waitingCodeText"),
+      waitingInfo: byId("waitingInfo"),
+      cancelWaitBtn: byId("cancelWaitBtn"),
       battleHeader: byId("battleHeader"),
       joinBar: byId("joinBar"),
       joinCodeInput: byId("joinCodeInput"),
       joinBtn: byId("joinBtn"),
       joinCancelBtn: byId("joinCancelBtn"),
       createRoomBtn: byId("createRoomBtn"),
-      cancelRoomBtn: byId("cancelRoomBtn"),
-      roomCodeDisplay: byId("roomCodeDisplay"),
-      roomCodeText: byId("roomCodeText"),
       matchBtn: byId("matchBtn"),
-      cancelMatchBtn: byId("cancelMatchBtn"),
-      matchStatus: byId("matchStatus"),
       myName: byId("myName"),
       myScore: byId("myScore"),
       oppBoardWrap: byId("oppBoardWrap"),
@@ -101,59 +102,48 @@
     }
   };
 
-  // ── Mode controller: shows/hides UI based on solo/waiting/playing ──
+  // ── Mode controller ──
 
   App.prototype.setMode = function (m) {
     this.mode = m;
     var locked = m !== "solo";
     var playing = m === "playing";
     var waiting = m === "waiting";
+    var solo = m === "solo";
 
-    // Lock tabs + "新游戏" button when not in solo
+    // Tabs: locked when not solo, hidden during playing
     var tabs = this.els.lobbyTabs.querySelectorAll(".lobby-tab");
     for (var i = 0; i < tabs.length; i++) {
       tabs[i].classList.toggle("disabled", locked);
     }
+    this.els.lobbyTabs.classList.toggle("hidden", playing);
     this.els.newGameBtn.classList.toggle("disabled", locked);
     if (locked) this.els.newGameBtn.setAttribute("disabled", "");
     else this.els.newGameBtn.removeAttribute("disabled");
 
-    // Tabs: hide entirely during playing
-    this.els.lobbyTabs.classList.toggle("hidden", playing);
+    // Config panels: only in solo mode, matching tab
+    this.els.panelSolo.classList.toggle("hidden", !solo || this.tab !== "solo");
+    this.els.panelRoom.classList.toggle("hidden", !solo || this.tab !== "room");
+    this.els.panelMatch.classList.toggle("hidden", !solo || this.tab !== "match");
 
-    // Battle header
+    // Waiting panel: only during waiting
+    this.els.panelWaiting.classList.toggle("hidden", !waiting);
+
+    // Grid selector: only in solo mode on solo tab
+    this.els.gridSeg.style.display = (solo && this.tab === "solo") ? "" : "none";
+
+    // Battle header + opponent: only during playing
     this.els.battleHeader.classList.toggle("hidden", !playing);
-
-    // Opponent mini-board
     this.els.oppBoardWrap.classList.toggle("hidden", !playing);
 
-    // Join bar
-    this.els.joinBar.classList.toggle("hidden", locked);
+    // Join bar: only in solo mode on match tab
+    this.els.joinBar.classList.toggle("hidden", !solo || this.tab !== "match");
 
-    // Panels: show active tab's panel only when not playing
-    var activeTab = this.tab;
-    this.els.panelSolo.classList.toggle("hidden", activeTab !== "solo" || playing);
-    this.els.panelRoom.classList.toggle("hidden", activeTab !== "room" || playing);
-    this.els.panelMatch.classList.toggle("hidden", activeTab !== "match" || playing);
-    this.els.gridSeg.style.display = (!playing && activeTab === "solo") ? "" : "none";
-    this.els.nickBar.style.display = "";
-
-    // Cancel buttons: show only during waiting, in active tab panel
-    var roomWaiting = waiting && this.tab === "room";
-    var matchWaiting = waiting && this.tab === "match";
-    this.els.cancelRoomBtn.classList.toggle("hidden", !roomWaiting);
-    this.els.cancelMatchBtn.classList.toggle("hidden", !matchWaiting);
-    this.els.createRoomBtn.classList.toggle("hidden", waiting && this.tab === "room");
-    this.els.matchBtn.classList.toggle("hidden", waiting && this.tab === "match");
-    if (!waiting) {
-      this.els.createRoomBtn.disabled = false;
-      this.els.matchBtn.disabled = false;
-    }
-
-    if (!waiting) {
-      this.els.roomCodeDisplay.hidden = true;
-      this.els.matchStatus.classList.add("hidden");
-    }
+    // Board: show only in solo (solo tab) or playing
+    var showBoard = (solo && this.tab === "solo") || playing;
+    this.els.board.style.display = showBoard ? "" : "none";
+    this.els.stage.style.display = showBoard ? "" : "none";
+    this.els.statusText.style.display = showBoard ? "" : "none";
   };
 
   // ── Nickname ──
@@ -185,8 +175,7 @@
     this.els.lobbyTabs.addEventListener("click", function (e) {
       if (self.mode !== "solo") return;
       var tab = e.target.closest(".lobby-tab");
-      if (!tab) return;
-      if (tab.classList.contains("disabled")) return;
+      if (!tab || tab.classList.contains("disabled")) return;
       var name = tab.dataset.tab;
       if (name) self.switchTab(name);
     });
@@ -199,19 +188,12 @@
     for (var i = 0; i < tabs.length; i++) {
       tabs[i].classList.toggle("active", tabs[i].dataset.tab === name);
     }
-
-    // Panel visibility
-    this.els.panelSolo.classList.toggle("hidden", name !== "solo");
-    this.els.panelRoom.classList.toggle("hidden", name !== "room");
-    this.els.panelMatch.classList.toggle("hidden", name !== "match");
-    this.els.gridSeg.style.display = name === "solo" ? "" : "none";
-    this.els.joinBar.classList.toggle("hidden", name === "solo" || name === "room");
-
     if (name === "solo") {
       this.ensureSoloGame();
     } else {
       this.enterLobby();
     }
+    this.setMode("solo");
   };
 
   App.prototype.enterLobby = function () {
@@ -246,15 +228,12 @@
         siblings[i].classList.remove("active");
       }
       btn.classList.add("active");
-
       var tabKey = self.tab === "match" ? "match" : "room";
       if (key === "mode") {
         self.config[tabKey].mode = val;
         var rowTimeId = tabKey === "match" ? "rowMatchTime" : "rowTime";
         var rowTime = byId(rowTimeId);
-        if (rowTime) {
-          rowTime.style.display = val === "timed" ? "" : "none";
-        }
+        if (rowTime) rowTime.style.display = val === "timed" ? "" : "none";
       } else if (key === "time") {
         self.config[tabKey].time = parseInt(val, 10);
       } else if (key === "grid") {
@@ -301,29 +280,16 @@
     if (this.els.backToMenuBtn) {
       this.els.backToMenuBtn.addEventListener("click", function () {
         self.exitBattle();
-        self.switchTab("solo");
-        self.setMode("solo");
       });
     }
     if (this.els.createRoomBtn) {
-      this.els.createRoomBtn.addEventListener("click", function () {
-        self.doCreateRoom();
-      });
-    }
-    if (this.els.cancelRoomBtn) {
-      this.els.cancelRoomBtn.addEventListener("click", function () {
-        self.cancelWaiting();
-      });
+      this.els.createRoomBtn.addEventListener("click", function () { self.doCreateRoom(); });
     }
     if (this.els.matchBtn) {
-      this.els.matchBtn.addEventListener("click", function () {
-        self.doMatch();
-      });
+      this.els.matchBtn.addEventListener("click", function () { self.doMatch(); });
     }
-    if (this.els.cancelMatchBtn) {
-      this.els.cancelMatchBtn.addEventListener("click", function () {
-        self.cancelWaiting();
-      });
+    if (this.els.cancelWaitBtn) {
+      this.els.cancelWaitBtn.addEventListener("click", function () { self.cancelWaiting(); });
     }
     if (this.els.joinBtn) {
       this.els.joinBtn.addEventListener("click", function () {
@@ -346,7 +312,7 @@
     var cfg = this.config.room;
     var timeLimit = cfg.mode === "timed" ? cfg.time : null;
     this.battle.createRoom(cfg.mode, cfg.grid, timeLimit);
-    this.els.roomCodeDisplay.hidden = true;
+    this.showWaiting("创建房间", cfg.mode, cfg.grid, cfg.time);
     this.enterLobby();
     this.setMode("waiting");
   };
@@ -356,8 +322,7 @@
     var cfg = this.config.match;
     var timeLimit = cfg.mode === "timed" ? cfg.time : null;
     this.battle.joinMatch(cfg.mode, cfg.grid, timeLimit);
-    this.els.matchStatus.classList.remove("hidden");
-    this.els.matchStatus.textContent = "正在寻找对手...";
+    this.showWaiting("快速匹配", cfg.mode, cfg.grid, cfg.time);
     this.enterLobby();
     this.setMode("waiting");
   };
@@ -365,10 +330,28 @@
   App.prototype.doJoinRoom = function (code) {
     if (!this.battle || this.mode !== "solo") return;
     this.battle.joinRoom(code);
-    this.els.matchStatus.classList.remove("hidden");
-    this.els.matchStatus.textContent = "正在加入房间 " + code + "...";
+    // Config unknown — server will tell us on start
+    this.showWaiting("加入房间", null, null, null);
+    this.els.waitingTitle.textContent = "正在加入房间 " + code + "...";
     this.enterLobby();
     this.setMode("waiting");
+  };
+
+  App.prototype.showWaiting = function (action, mode, grid, time) {
+    this.els.waitingTitle.textContent = action === "创建房间" ? "等待对手加入..." : "正在寻找对手...";
+    this.els.waitingCode.classList.toggle("hidden", true);
+    // Info: mode + time + grid
+    var parts = [];
+    if (mode) {
+      var modeLabel = mode === "timed" ? "计时赛" : "竞速赛";
+      parts.push(modeLabel);
+    }
+    if (grid) parts.push(grid + "×" + grid);
+    if (mode === "timed" && time) {
+      var mins = Math.floor(time / 60);
+      parts.push(mins + " 分钟");
+    }
+    this.els.waitingInfo.textContent = parts.join(" · ");
   };
 
   App.prototype.cancelWaiting = function () {
@@ -376,8 +359,6 @@
       this.battle.cancel();
       this.battle.stopTimer();
     }
-    this.els.roomCodeDisplay.hidden = true;
-    this.els.matchStatus.classList.add("hidden");
     this.setMode("solo");
     this.switchTab(this.tab);
   };
@@ -386,10 +367,9 @@
 
   App.prototype.onWaiting = function (msg) {
     if (msg.room_code) {
-      this.els.roomCodeDisplay.hidden = false;
-      this.els.roomCodeText.textContent = msg.room_code;
-      this.els.matchStatus.classList.remove("hidden");
-      this.els.matchStatus.textContent = "等待对手加入...";
+      this.els.waitingTitle.textContent = "等待对手加入...";
+      this.els.waitingCode.classList.remove("hidden");
+      this.els.waitingCodeText.textContent = msg.room_code;
     }
   };
 
@@ -397,21 +377,16 @@
     var self = this;
     this.setMode("playing");
 
-    this.els.battleHeader.classList.remove("hidden");
-    this.els.oppBoardWrap.classList.remove("hidden");
     this.els.myName.textContent = this.battle.nickname;
-
     this.gridSize = msg.gridSize;
     this.renderer.setSize(msg.gridSize);
 
-    var boardState = msg.your_board;
+    var bs = msg.your_board;
     this.state = {
-      size: boardState.size,
-      score: boardState.score,
-      reached2048: boardState.reached2048 || false,
-      nextId: this.findMaxId(boardState.tiles) + 1,
-      grid: boardState.grid,
-      tiles: boardState.tiles,
+      size: bs.size, score: bs.score,
+      reached2048: bs.reached2048 || false,
+      nextId: this.findMaxId(bs.tiles) + 1,
+      grid: bs.grid, tiles: bs.tiles,
     };
     this.renderer.renderFull(this.state, this.best);
     this.renderer.hideOverlay();
@@ -440,16 +415,7 @@
   App.prototype.onGameOver = function (msg) {
     this.battle.stopTimer();
     this.locked = true;
-
-    var title;
-    if (msg.winner === "you") {
-      title = "你赢了!";
-    } else if (msg.winner === "opponent") {
-      title = "你输了!";
-    } else {
-      title = "平局!";
-    }
-
+    var title = msg.winner === "you" ? "你赢了!" : msg.winner === "opponent" ? "你输了!" : "平局!";
     this.els.overlayTitle.textContent = title;
     this.els.overlayScores.hidden = false;
     this.els.overlayScores.textContent =
@@ -461,7 +427,6 @@
   };
 
   App.prototype.onDisconnected = function () {
-    // WebSocket disconnected while waiting or playing
     if (this.mode === "waiting") {
       this.cancelWaiting();
       alert("与服务器断开连接，已自动取消等待。");
@@ -485,26 +450,21 @@
     this.pendingDirection = null;
     this.renderer.hideOverlay();
     this.state = null;
-    this.enterLobby();
     this.setMode("solo");
     this.switchTab("solo");
+    this.enterLobby();
+    this.ensureSoloGame();
   };
 
   // ── Keyboard ──
 
   App.prototype.unbindKeyboard = function () {
-    if (this.unbindInput) {
-      this.unbindInput();
-      this.unbindInput = null;
-    }
+    if (this.unbindInput) { this.unbindInput(); this.unbindInput = null; }
   };
 
   App.prototype.bindInput = function bindInput() {
     if (!window.Input2048) return;
-    if (this.unbindInput) {
-      this.unbindInput();
-      this.unbindInput = null;
-    }
+    if (this.unbindInput) { this.unbindInput(); this.unbindInput = null; }
     var self = this;
     this.unbindInput = window.Input2048.bindInput({
       element: this.els.board,
@@ -525,7 +485,7 @@
     return max;
   };
 
-  // ── Solo game ──
+  // ── Solo ──
 
   App.prototype.reset = function reset() {
     if (this.mode !== "solo") return;
@@ -577,45 +537,28 @@
   };
 
   App.prototype.tryMove = function tryMove(direction) {
-    if (this.locked) {
-      this.pendingDirection = direction;
-      return;
-    }
+    if (this.locked) { this.pendingDirection = direction; return; }
     if (!this.state) return;
-
     var result = window.Engine2048.move(this.state, direction);
     if (!result.moved) {
-      if (result.gameOver && this.mode === "solo") {
-        this.renderer.showOverlay("游戏结束!");
-      }
+      if (result.gameOver && this.mode === "solo") this.renderer.showOverlay("游戏结束!");
       return;
     }
-
-    var scoreBefore = this.state ? this.state.score : 0;
+    var scoreBefore = this.state.score;
     this.state = result.state;
     if (this.state.score > this.best) {
       this.best = this.state.score;
       if (window.Storage2048) window.Storage2048.setBestScore(this.best);
     }
-
-    if (this.mode === "playing" && this.battle) {
-      this.battle.sendMove(direction);
-    }
-
+    if (this.mode === "playing" && this.battle) this.battle.sendMove(direction);
     this.locked = true;
     var self = this;
     this.renderer.apply(this.state, this.best, result.events, scoreBefore, function () {
       self.locked = false;
-
       if (self.mode === "playing" && self.els.myScore) {
         self.els.myScore.textContent = String(self.state.score);
       }
-
-      if (result.gameOver) {
-        if (self.mode === "solo") {
-          self.renderer.showOverlay("游戏结束!");
-        }
-      }
+      if (result.gameOver && self.mode === "solo") self.renderer.showOverlay("游戏结束!");
       if (self.pendingDirection) {
         var next = self.pendingDirection;
         self.pendingDirection = null;
@@ -628,7 +571,6 @@
     var app = new App();
     app.init();
   }
-
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", boot);
   } else {

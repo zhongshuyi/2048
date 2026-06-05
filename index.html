@@ -88,11 +88,6 @@
             </div>
           </div>
           <button class="btn btn-primary" id="createRoomBtn">创建房间</button>
-          <button class="btn hidden" id="cancelRoomBtn">取消等待</button>
-          <div class="room-code" id="roomCodeDisplay" hidden>
-            房间码：<strong id="roomCodeText"></strong>
-            <span class="room-code-hint">分享给朋友即可开始</span>
-          </div>
         </div>
       </div>
 
@@ -122,8 +117,6 @@
             </div>
           </div>
           <button class="btn btn-primary" id="matchBtn">开始匹配</button>
-          <button class="btn hidden" id="cancelMatchBtn">取消匹配</button>
-          <div class="match-status hidden" id="matchStatus">正在寻找对手...</div>
         </div>
       </div>
 
@@ -145,6 +138,21 @@
         <input class="join-input" id="joinCodeInput" type="text" maxlength="6" placeholder="输入房间码" />
         <button class="btn" id="joinBtn">加入</button>
         <button class="btn" id="joinCancelBtn">取消</button>
+      </div>
+
+      <!-- Waiting screen -->
+      <div class="waiting-panel hidden" id="panelWaiting">
+        <div class="waiting-card">
+          <div class="waiting-spinner" aria-hidden="true">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+          <div class="waiting-title" id="waitingTitle">等待对手加入...</div>
+          <div class="waiting-code" id="waitingCode" hidden>
+            房间码 <strong id="waitingCodeText"></strong>
+          </div>
+          <div class="waiting-info" id="waitingInfo"></div>
+          <button class="btn" id="cancelWaitBtn">取消</button>
+        </div>
       </div>
 
       <section class="game-area">

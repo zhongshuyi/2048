@@ -703,3 +703,83 @@ body {
   pointer-events: none;
   cursor: not-allowed;
 }
+
+/* ── Waiting panel ── */
+
+.waiting-panel {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0;
+}
+
+.waiting-panel.hidden {
+  display: none;
+}
+
+.waiting-card {
+  text-align: center;
+  background: #f9f6f2;
+  border-radius: 12px;
+  padding: 28px 36px;
+  min-width: 280px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+}
+
+.waiting-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--panel-text);
+  margin-bottom: 8px;
+}
+
+.waiting-code {
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--panel-muted);
+}
+
+.waiting-code strong {
+  font-size: 28px;
+  letter-spacing: 4px;
+  color: var(--panel-text);
+  display: block;
+  margin-top: 4px;
+}
+
+.waiting-info {
+  font-size: 13px;
+  color: var(--panel-muted);
+  margin-bottom: 16px;
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+
+/* Bouncing dots spinner */
+.waiting-spinner {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.waiting-spinner .dot {
+  width: 10px;
+  height: 10px;
+  background: var(--board-bg);
+  border-radius: 50%;
+  animation: dot-bounce 1.2s ease-in-out infinite;
+}
+
+.waiting-spinner .dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.waiting-spinner .dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes dot-bounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
