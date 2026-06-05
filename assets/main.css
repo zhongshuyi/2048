@@ -694,3 +694,12 @@ body {
     height: 42px;
   }
 }
+
+/* ── Disabled state ── */
+
+.lobby-tab.disabled,
+.btn.disabled {
+  opacity: 0.35;
+  pointer-events: none;
+  cursor: not-allowed;
+}

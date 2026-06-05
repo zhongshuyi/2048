@@ -67,6 +67,9 @@
     this.ws.onclose = function () {
       self.connected = false;
       self.stopTimer();
+      if (self.app && self.app.onDisconnected) {
+        self.app.onDisconnected();
+      }
     };
 
     this.ws.onerror = function () {
