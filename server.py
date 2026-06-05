@@ -193,6 +193,22 @@ async def handle_move(ws, data):
     game[player_key]["state"] = new_state
     game[player_key]["score"] = new_state["score"]
 
+    # Send authoritative state back to moving player
+    try:
+        await ws.send_json({
+            "type": "move_ack",
+            "moved": True,
+            "scoreGained": score_gained,
+            "grid": new_state["grid"],
+            "tiles": new_state["tiles"],
+            "score": new_state["score"],
+            "reached2048": reached2048,
+            "gameOver": game_over,
+            "events": events,
+        })
+    except Exception:
+        pass
+
     # Send opponent update (grid with values, not IDs)
     opponent_ws = game[opponent_key]["ws"]
     val_grid = grid_to_values(new_state)
@@ -201,7 +217,6 @@ async def handle_move(ws, data):
             "type": "opponent_move",
             "grid": val_grid,
             "score": new_state["score"],
-            "events": events,
         })
     except Exception:
         pass

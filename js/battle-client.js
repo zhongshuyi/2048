@@ -163,6 +163,9 @@
       case "start":
         this.app.onBattleStart(msg);
         break;
+      case "move_ack":
+        this.app.onMoveAck(msg);
+        break;
       case "opponent_move":
         this.app.onOpponentMove(msg);
         break;

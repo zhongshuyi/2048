@@ -415,6 +415,46 @@
     this.bindInput();
   };
 
+  App.prototype.onMoveAck = function (msg) {
+    if (!msg.moved) {
+      this.locked = false;
+      if (msg.gameOver) return; // server handles dead player
+      if (this.pendingDirection) {
+        var d = this.pendingDirection;
+        this.pendingDirection = null;
+        this.tryMove(d);
+      }
+      return;
+    }
+
+    var scoreBefore = this.state ? this.state.score : 0;
+    this.state = {
+      size: this.state.size,
+      score: msg.score,
+      reached2048: msg.reached2048 || false,
+      nextId: this.findMaxId(msg.tiles) + 1,
+      grid: msg.grid,
+      tiles: msg.tiles,
+    };
+    if (this.state.score > this.best) {
+      this.best = this.state.score;
+      if (window.Storage2048) window.Storage2048.setBestScore(this.best);
+    }
+
+    var self = this;
+    this.renderer.apply(this.state, this.best, msg.events, scoreBefore, function () {
+      self.locked = false;
+      if (self.els.myScore) {
+        self.els.myScore.textContent = String(self.state.score);
+      }
+      if (self.pendingDirection) {
+        var d = self.pendingDirection;
+        self.pendingDirection = null;
+        self.tryMove(d);
+      }
+    });
+  };
+
   App.prototype.onOpponentMove = function (msg) {
     if (this.battle) {
       this.battle.renderOpponentMini(msg.grid, this.gridSize);
@@ -552,9 +592,18 @@
   App.prototype.tryMove = function tryMove(direction) {
     if (this.locked) { this.pendingDirection = direction; return; }
     if (!this.state) return;
+
+    // During battle: send to server, server responds with authoritative state
+    if (this.mode === "playing" && this.battle) {
+      this.battle.sendMove(direction);
+      this.locked = true;
+      return;
+    }
+
+    // Solo mode: use local engine
     var result = window.Engine2048.move(this.state, direction);
     if (!result.moved) {
-      if (result.gameOver && this.mode === "solo") this.renderer.showOverlay("游戏结束!");
+      if (result.gameOver) this.renderer.showOverlay("游戏结束!");
       return;
     }
     var scoreBefore = this.state.score;
@@ -563,15 +612,11 @@
       this.best = this.state.score;
       if (window.Storage2048) window.Storage2048.setBestScore(this.best);
     }
-    if (this.mode === "playing" && this.battle) this.battle.sendMove(direction);
     this.locked = true;
     var self = this;
     this.renderer.apply(this.state, this.best, result.events, scoreBefore, function () {
       self.locked = false;
-      if (self.mode === "playing" && self.els.myScore) {
-        self.els.myScore.textContent = String(self.state.score);
-      }
-      if (result.gameOver && self.mode === "solo") self.renderer.showOverlay("游戏结束!");
+      if (result.gameOver) self.renderer.showOverlay("游戏结束!");
       if (self.pendingDirection) {
         var next = self.pendingDirection;
         self.pendingDirection = null;
