@@ -473,7 +473,7 @@
     var result = window.Engine2048.move(this.state, direction);
     if (!result.moved) {
       if (result.gameOver && !this.inBattle) {
-        this.renderer.showOverlay("Game over!");
+        this.renderer.showOverlay("游戏结束!");
       }
       return;
     }
@@ -500,7 +500,7 @@
 
       if (result.gameOver) {
         if (!self.inBattle) {
-          self.renderer.showOverlay("Game over!");
+          self.renderer.showOverlay("游戏结束!");
         }
       }
       if (self.pendingDirection) {
