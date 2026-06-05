@@ -598,10 +598,12 @@ body {
 }
 
 .join-room-form .btn {
-  height: 42px;
   padding: 0 20px;
-  margin-top: 1px;
+  border: 2px solid transparent;
+  box-shadow: none;
 }
+.join-room-form .btn:hover { box-shadow: none; transform: none; }
+.join-room-form .btn:active { transform: none; }
 
 .join-input-lg {
   width: 180px;
