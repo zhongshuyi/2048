@@ -10,6 +10,7 @@
     this.unbindInput = null;
     this.locked = false;
     this.pendingDirection = null;
+    this.gridSize = 4;
 
     this.els = {
       board: byId("board"),
@@ -21,17 +22,19 @@
       bestValue: byId("bestValue"),
       newGameBtn: byId("newGameBtn"),
       tryAgainBtn: byId("tryAgainBtn"),
+      gridSeg: document.querySelector(".grid-seg"),
     };
   }
 
   App.prototype.init = function init() {
     this.best = window.Storage2048 ? window.Storage2048.getBestScore() : 0;
 
-    const created = window.Engine2048.createGame(4);
+    var size = this.gridSize;
+    var created = window.Engine2048.createGame(size);
     this.state = created.state;
 
     this.renderer = window.UIRenderer2048.create({
-      size: 4,
+      size: size,
       boardEl: this.els.board,
       stageEl: this.els.stage,
       overlayEl: this.els.overlay,
@@ -45,6 +48,8 @@
 
     this.bindActions();
     this.bindInput();
+    this.bindGridSelector();
+    this.syncGridPill();
   };
 
   App.prototype.bindActions = function bindActions() {
@@ -63,9 +68,54 @@
   App.prototype.reset = function reset() {
     this.locked = false;
     this.pendingDirection = null;
-    const created = window.Engine2048.createGame(4);
+    var created = window.Engine2048.createGame(this.gridSize);
     this.state = created.state;
     this.renderer.renderFull(this.state, this.best);
+  };
+
+  App.prototype.changeGridSize = function changeGridSize(newSize) {
+    if (newSize === this.gridSize) return;
+    this.gridSize = newSize;
+    this.locked = false;
+    this.pendingDirection = null;
+    var created = window.Engine2048.createGame(newSize);
+    this.state = created.state;
+    this.renderer.setSize(newSize);
+    this.renderer.renderFull(this.state, this.best);
+    this.syncGridPill();
+  };
+
+  App.prototype.syncGridPill = function syncGridPill() {
+    if (!this.els.gridSeg) return;
+    var seg = this.els.gridSeg;
+    var idx = this.gridSize - 4;
+    var checked = seg.querySelector('input:checked');
+    if (!checked) return;
+    var label = checked.closest('label') || checked.nextElementSibling;
+    seg.setAttribute("data-active", String(idx));
+    // JS-measured pill position for pixel-perfect alignment
+    var pill = seg.querySelector(".grid-seg-pill");
+    if (pill && label) {
+      var segRect = seg.getBoundingClientRect();
+      var labelRect = label.getBoundingClientRect();
+      var left = labelRect.left - segRect.left;
+      var width = labelRect.width;
+      pill.style.width = width + "px";
+      pill.style.transform = "translateX(" + left + "px)";
+    }
+  };
+
+  App.prototype.bindGridSelector = function bindGridSelector() {
+    if (!this.els.gridSeg) return;
+    var self = this;
+    var radios = this.els.gridSeg.querySelectorAll('input[name="gridSize"]');
+    for (var i = 0; i < radios.length; i++) {
+      radios[i].addEventListener("change", function () {
+        var v = parseInt(this.value, 10);
+        if (v > 0) self.changeGridSize(v);
+      });
+    }
+    window.addEventListener("resize", function () { self.syncGridPill(); });
   };
 
   App.prototype.tryMove = function tryMove(direction) {

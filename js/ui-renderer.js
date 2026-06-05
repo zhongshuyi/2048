@@ -63,8 +63,11 @@
     return Number.isFinite(v) ? Math.max(0, Math.floor(v)) : fallback;
   }
 
-  function valueStyle(value, scale) {
-    var s = typeof scale === "number" && Number.isFinite(scale) ? scale : 1;
+  function valueStyle(value, boardScale, gridSize) {
+    var bs = typeof boardScale === "number" && Number.isFinite(boardScale) ? boardScale : 1;
+    var gs = typeof gridSize === "number" && gridSize > 0 ? gridSize : 4;
+    var cellScale = 4 / gs;
+    var s = Math.max(0.3, bs * cellScale);
     var map = {
       2:    { bg: 0xeee4da, fg: 0x776e65, size: 44 },
       4:    { bg: 0xede0c8, fg: 0x776e65, size: 44 },
@@ -166,8 +169,16 @@
   Renderer.prototype.measure = function measure() {
     const size = this.boardEl.clientWidth || parseCssPxVar("--board-size", 500);
     this.boardSize = Math.floor(size);
-    this.gap = parseCssPxVar("--gap", 15);
+    var cssGap = parseCssPxVar("--gap", 15);
+    var calcGap = Math.max(5, Math.min(15, Math.floor(this.boardSize / (this.size * 7))));
+    this.gap = Math.min(cssGap, calcGap);
     this.cellSize = (this.boardSize - this.gap * (this.size + 1)) / this.size;
+  };
+
+  Renderer.prototype.setSize = function setSize(newSize) {
+    this.size = newSize;
+    this.measure();
+    this.drawStatic();
   };
 
   Renderer.prototype.cellToXY = function cellToXY(r, c) {
@@ -259,7 +270,7 @@
     this.layers.board.endFill();
 
     this.layers.cells.clear();
-    var cellRadius = 7;
+    var cellRadius = Math.max(3, Math.min(10, Math.round(this.cellSize * 0.08)));
     var cellAlpha = 0.55;
     for (var r = 0; r < this.size; r++) {
       for (var c = 0; c < this.size; c++) {
@@ -304,9 +315,9 @@
   };
 
   Renderer.prototype.redrawTile = function redrawTile(tile) {
-    var radius = 7;
+    var radius = Math.max(3, Math.min(10, Math.round(this.cellSize * 0.08)));
     var scale = Math.max(0.5, Math.min(1, this.boardSize / 500));
-    var s = valueStyle(tile.value, scale);
+    var s = valueStyle(tile.value, scale, this.size);
     var w = this.cellSize;
     var h = this.cellSize;
     var g = tile.bg;
