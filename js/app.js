@@ -339,7 +339,7 @@
 
   App.prototype.showWaiting = function (action, mode, grid, time) {
     this.els.waitingTitle.textContent = action === "创建房间" ? "等待对手加入..." : "正在寻找对手...";
-    this.els.waitingCode.classList.toggle("hidden", true);
+    this.els.waitingCode.hidden = true;
     // Info: mode + time + grid
     var parts = [];
     if (mode) {
@@ -368,7 +368,7 @@
   App.prototype.onWaiting = function (msg) {
     if (msg.room_code) {
       this.els.waitingTitle.textContent = "等待对手加入...";
-      this.els.waitingCode.classList.remove("hidden");
+      this.els.waitingCode.hidden = false;
       this.els.waitingCodeText.textContent = msg.room_code;
     }
   };
