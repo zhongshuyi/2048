@@ -14,6 +14,7 @@
     this.tab = "solo";
     this.battle = null;
     this.inBattle = false;
+    this.waiting = false;
 
     this.config = {
       room: { mode: "timed", time: 180, grid: 4 },
@@ -129,30 +130,67 @@
   };
 
   App.prototype.switchTab = function (name) {
+    // Block switching during battle
+    if (this.inBattle) return;
+
+    // Cancel waiting when switching away from room/match
+    if (this.waiting && name !== "room" && name !== "match") {
+      this.cancelWaiting();
+    }
+
     this.tab = name;
     var tabs = this.els.lobbyTabs.querySelectorAll(".lobby-tab");
     for (var i = 0; i < tabs.length; i++) {
       tabs[i].classList.toggle("active", tabs[i].dataset.tab === name);
     }
 
+    // Panel visibility
     this.els.panelSolo.classList.toggle("hidden", name !== "solo");
     this.els.panelRoom.classList.toggle("hidden", name !== "room");
     this.els.panelMatch.classList.toggle("hidden", name !== "match");
 
+    // Grid selector only in solo
     this.els.gridSeg.style.display = name === "solo" ? "" : "none";
     this.els.nickBar.style.display = "";
 
+    // Hide battle elements
     this.els.battleHeader.classList.add("hidden");
     this.els.oppBoardWrap.classList.add("hidden");
     this.els.joinBar.classList.add("hidden");
     this.els.roomCodeDisplay.hidden = true;
     this.els.matchStatus.classList.add("hidden");
+    this.els.matchBtn.disabled = false;
+    this.els.createRoomBtn.disabled = false;
 
     if (name === "solo") {
       this.ensureSoloGame();
     } else if (name === "match") {
       this.els.joinBar.classList.remove("hidden");
+    } else if (name === "room") {
+      this.enterLobby();
     }
+  };
+
+  App.prototype.enterLobby = function () {
+    // Hide board when in lobby (not playing)
+    if (this.renderer) {
+      this.renderer.clearTiles();
+    }
+    this.state = null;
+    this.unbindKeyboard();
+    this.renderer.hideOverlay();
+  };
+
+  App.prototype.cancelWaiting = function () {
+    this.waiting = false;
+    if (this.battle) {
+      this.battle.cancel();
+      this.battle.stopTimer();
+    }
+    this.els.roomCodeDisplay.hidden = true;
+    this.els.matchStatus.classList.add("hidden");
+    this.els.matchBtn.disabled = false;
+    this.els.createRoomBtn.disabled = false;
   };
 
   App.prototype.ensureSoloGame = function () {
@@ -256,28 +294,34 @@
 
   App.prototype.doCreateRoom = function () {
     if (!this.battle) return;
+    this.waiting = true;
     var cfg = this.config.room;
     var timeLimit = cfg.mode === "timed" ? cfg.time : null;
     this.battle.createRoom(cfg.mode, cfg.grid, timeLimit);
     this.els.roomCodeDisplay.hidden = true;
+    this.enterLobby();
   };
 
   App.prototype.doMatch = function () {
     if (!this.battle) return;
+    this.waiting = true;
     var cfg = this.config.match;
     var timeLimit = cfg.mode === "timed" ? cfg.time : null;
     this.battle.joinMatch(cfg.mode, cfg.grid, timeLimit);
     this.els.matchStatus.classList.remove("hidden");
     this.els.matchBtn.disabled = true;
     this.els.joinBar.classList.add("hidden");
+    this.enterLobby();
   };
 
   App.prototype.doJoinRoom = function (code) {
     if (!this.battle) return;
+    this.waiting = true;
     this.battle.joinRoom(code);
     this.els.matchStatus.classList.remove("hidden");
     this.els.matchStatus.textContent = "正在加入房间 " + code + "...";
     this.els.joinBar.classList.add("hidden");
+    this.enterLobby();
   };
 
   App.prototype.onWaiting = function (msg) {
@@ -293,6 +337,7 @@
   App.prototype.onBattleStart = function (msg) {
     var self = this;
     this.inBattle = true;
+    this.waiting = false;
 
     this.els.panelSolo.classList.add("hidden");
     this.els.panelRoom.classList.add("hidden");
@@ -350,11 +395,11 @@
 
     var title;
     if (msg.winner === "you") {
-      title = "YOU WIN!";
+      title = "你赢了!";
     } else if (msg.winner === "opponent") {
-      title = "YOU LOSE!";
+      title = "你输了!";
     } else {
-      title = "DRAW!";
+      title = "平局!";
     }
 
     this.els.overlayTitle.textContent = title;
@@ -369,6 +414,7 @@
 
   App.prototype.exitBattle = function () {
     this.inBattle = false;
+    this.waiting = false;
     if (this.battle) {
       this.battle.cancel();
       this.battle.stopTimer();
@@ -379,7 +425,7 @@
     this.els.oppBoardWrap.classList.add("hidden");
     this.els.joinBar.classList.add("hidden");
     this.els.lobbyTabs.style.display = "";
-    this.els.gridSeg.style.display = "";
+    this.els.gridSeg.style.display = this.tab === "solo" ? "" : "none";
     this.els.overlayScores.hidden = true;
     this.els.overlayBattleActions.classList.add("hidden");
     this.els.overlayActions.classList.remove("hidden");
@@ -389,6 +435,14 @@
     this.els.createRoomBtn.disabled = false;
     this.renderer.hideOverlay();
     this.state = null;
+    this.enterLobby();
+  };
+
+  App.prototype.unbindKeyboard = function () {
+    if (this.unbindInput) {
+      this.unbindInput();
+      this.unbindInput = null;
+    }
   };
 
   App.prototype.findMaxId = function (tiles) {
