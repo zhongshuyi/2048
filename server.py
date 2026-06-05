@@ -136,28 +136,34 @@ async def handle_join_match(ws, data):
     nickname = data.get("nickname", "Anonymous")
     ws_meta[ws]["nickname"] = nickname
 
-    ws1, ws2 = manager.dequeue_match(mode, grid_size, time_limit)
-    if ws2 is None:
-        # No match yet — enqueue
-        manager.enqueue_match(mode, grid_size, time_limit, ws)
-        await ws.send_json({"type": "waiting", "room_code": None})
+    # Try to pair with an existing waiting player
+    key = manager._queue_key(mode, grid_size, time_limit)
+    queue = manager.match_queues.get(key)
+    if queue and len(queue) > 0:
+        ws1 = queue.popleft()
+        if len(queue) == 0:
+            del manager.match_queues[key]
+        ws2 = ws
+
+        ws_meta[ws1]["in_game"] = True
+        ws_meta[ws2]["in_game"] = True
+
+        game = manager.create_game(
+            mode, grid_size, time_limit,
+            ws_meta[ws1]["nickname"], nickname,
+            ws1, ws2,
+        )
+
+        await _send_start(ws1, game, 1)
+        await _send_start(ws2, game, 2)
+
+        if game["mode"] == "timed":
+            asyncio.create_task(_game_timer(game["id"], game["time"]))
         return
 
-    # Match found! ws1 was enqueued first, ws2 is current ws
-    ws_meta[ws1]["in_game"] = True
-    ws_meta[ws2]["in_game"] = True
-
-    game = manager.create_game(
-        mode, grid_size, time_limit,
-        ws_meta[ws1]["nickname"], nickname,
-        ws1, ws2,
-    )
-
-    await _send_start(ws1, game, 1)
-    await _send_start(ws2, game, 2)
-
-    if game["mode"] == "timed":
-        asyncio.create_task(_game_timer(game["id"], game["time"]))
+    # No match yet — enqueue
+    manager.enqueue_match(mode, grid_size, time_limit, ws)
+    await ws.send_json({"type": "waiting", "room_code": None})
 
 
 async def handle_move(ws, data):
