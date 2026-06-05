@@ -45,6 +45,7 @@
         <button class="lobby-tab active" data-tab="solo">单人</button>
         <button class="lobby-tab" data-tab="room">创建房间</button>
         <button class="lobby-tab" data-tab="match">快速匹配</button>
+        <button class="lobby-tab" data-tab="join">加入房间</button>
       </nav>
 
       <div class="lobby-panel" id="panelSolo">
@@ -120,6 +121,15 @@
         </div>
       </div>
 
+      <div class="lobby-panel hidden" id="panelJoin">
+        <div class="battle-config">
+          <div class="join-room-form">
+            <input class="join-input-lg" id="joinInput" type="text" maxlength="6" placeholder="输入 6 位房间码" autocomplete="off" />
+            <button class="btn btn-primary" id="joinRoomBtn">加入</button>
+          </div>
+        </div>
+      </div>
+
       <div class="battle-header hidden" id="battleHeader">
         <div class="battle-score">
           <div class="battle-score-label">我方</div>
@@ -132,12 +142,6 @@
           <div class="battle-score-name" id="oppName">-</div>
           <div class="battle-score-value" id="oppScore">0</div>
         </div>
-      </div>
-
-      <div class="join-bar hidden" id="joinBar">
-        <input class="join-input" id="joinCodeInput" type="text" maxlength="6" placeholder="输入房间码" />
-        <button class="btn" id="joinBtn">加入</button>
-        <button class="btn" id="joinCancelBtn">取消</button>
       </div>
 
       <!-- Waiting screen -->

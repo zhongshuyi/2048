@@ -589,7 +589,35 @@ body {
   50% { transform: scale(1.08); color: #e01818; }
 }
 
-/* ── Join bar ── */
+/* ── Join room panel ── */
+
+.join-room-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.join-input-lg {
+  width: 200px;
+  padding: 10px 14px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  text-align: center;
+  border: 2px solid var(--seg-bg);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--panel-text);
+  outline: none;
+}
+
+.join-input-lg:focus {
+  border-color: var(--board-bg);
+}
+
+/* ── Join bar (legacy) ── */
 
 .join-bar {
   display: flex;

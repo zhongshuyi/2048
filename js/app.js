@@ -42,6 +42,7 @@
       panelSolo: byId("panelSolo"),
       panelRoom: byId("panelRoom"),
       panelMatch: byId("panelMatch"),
+      panelJoin: byId("panelJoin"),
       panelWaiting: byId("panelWaiting"),
       waitingTitle: byId("waitingTitle"),
       waitingCode: byId("waitingCode"),
@@ -49,10 +50,8 @@
       waitingInfo: byId("waitingInfo"),
       cancelWaitBtn: byId("cancelWaitBtn"),
       battleHeader: byId("battleHeader"),
-      joinBar: byId("joinBar"),
-      joinCodeInput: byId("joinCodeInput"),
-      joinBtn: byId("joinBtn"),
-      joinCancelBtn: byId("joinCancelBtn"),
+      joinInput: byId("joinInput"),
+      joinRoomBtn: byId("joinRoomBtn"),
       createRoomBtn: byId("createRoomBtn"),
       matchBtn: byId("matchBtn"),
       myName: byId("myName"),
@@ -92,9 +91,8 @@
     var params = new URLSearchParams(window.location.search);
     var roomCode = params.get("room");
     if (roomCode && this.battle) {
-      this.switchTab("match");
-      this.els.joinBar.classList.remove("hidden");
-      this.els.joinCodeInput.value = roomCode.toUpperCase();
+      this.switchTab("join");
+      this.els.joinInput.value = roomCode.toUpperCase();
       var self2 = this;
       setTimeout(function () {
         self2.doJoinRoom(roomCode);
@@ -125,6 +123,7 @@
     this.els.panelSolo.classList.toggle("hidden", !solo || this.tab !== "solo");
     this.els.panelRoom.classList.toggle("hidden", !solo || this.tab !== "room");
     this.els.panelMatch.classList.toggle("hidden", !solo || this.tab !== "match");
+    this.els.panelJoin.classList.toggle("hidden", !solo || this.tab !== "join");
 
     // Waiting panel: only during waiting
     this.els.panelWaiting.classList.toggle("hidden", !waiting);
@@ -135,9 +134,6 @@
     // Battle header + opponent: only during playing
     this.els.battleHeader.classList.toggle("hidden", !playing);
     this.els.oppBoardWrap.classList.toggle("hidden", !playing);
-
-    // Join bar: only in solo mode on match tab
-    this.els.joinBar.classList.toggle("hidden", !solo || this.tab !== "match");
 
     // Board: show only in solo (solo tab) or playing
     var showBoard = (solo && this.tab === "solo") || playing;
@@ -291,16 +287,17 @@
     if (this.els.cancelWaitBtn) {
       this.els.cancelWaitBtn.addEventListener("click", function () { self.cancelWaiting(); });
     }
-    if (this.els.joinBtn) {
-      this.els.joinBtn.addEventListener("click", function () {
-        var code = self.els.joinCodeInput.value.trim().toUpperCase();
-        if (code) self.doJoinRoom(code);
+    if (this.els.joinRoomBtn) {
+      this.els.joinRoomBtn.addEventListener("click", function () {
+        var code = self.els.joinInput.value.trim().toUpperCase();
+        if (code && code.length === 6) self.doJoinRoom(code);
       });
-    }
-    if (this.els.joinCancelBtn) {
-      this.els.joinCancelBtn.addEventListener("click", function () {
-        self.els.joinBar.classList.add("hidden");
-        self.els.joinCodeInput.value = "";
+      // Also allow Enter key in the join input
+      this.els.joinInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+          var code = self.els.joinInput.value.trim().toUpperCase();
+          if (code && code.length === 6) self.doJoinRoom(code);
+        }
       });
     }
   };
