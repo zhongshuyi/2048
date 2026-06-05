@@ -315,12 +315,11 @@
     tile.text.position.set(w / 2, h / 2);
   };
 
-  Renderer.prototype.tween = function tween(durationMs, update, easingFn) {
+  Renderer.prototype.tween = function tween(durationMs, update) {
     if (!this.app || durationMs <= 0) {
       update(1);
       return Promise.resolve();
     }
-    var ease = easingFn || cssEaseOut;
     return new Promise((resolve) => {
       const start = performance.now();
       const ticker = this.app.ticker;
@@ -332,7 +331,7 @@
           resolve();
           return;
         }
-        update(ease(Math.max(0, Math.min(1, t))));
+        update(Math.max(0, Math.min(1, t)));
       };
       ticker.add(tick);
     });
@@ -343,29 +342,25 @@
     var toP = this.cellToCenter(to.r, to.c);
 
     return this.tween(durationMs, function (p) {
-      tile.container.position.set(lerp(fromP.x, toP.x, p), lerp(fromP.y, toP.y, p));
-    }, cssEaseOut);
+      var e = cssEaseOut(p);
+      tile.container.position.set(lerp(fromP.x, toP.x, e), lerp(fromP.y, toP.y, e));
+    });
   };
 
   Renderer.prototype.tweenMergeReveal = function tweenMergeReveal(tile, durationMs) {
-    tile.text.scale.set(0);
     return this.tween(durationMs, function (p) {
       if (!tile.container || tile.container._destroyed) return;
-      var peak = 1.15;
-      var peakP = 0.4;
-      var cs;
-      if (p < peakP) {
-        cs = lerp(1, peak, cssEase(p / peakP));
+      var ep = cssEase(p);
+      var s;
+      if (ep < 0.5) {
+        s = lerp(0, 1.2, ep * 2);
       } else {
-        cs = lerp(peak, 1, cssEase((p - peakP) / (1 - peakP)));
+        s = lerp(1.2, 1, (ep - 0.5) * 2);
       }
-      tile.container.scale.set(cs);
-      var tp = Math.max(0, (p - 0.05) / 0.95);
-      tile.text.scale.set(lerp(0, 1, cssEase(tp)));
-    }, cssEase).then(function () {
+      tile.container.scale.set(s);
+    }).then(function () {
       if (!tile.container || tile.container._destroyed) return;
       tile.container.scale.set(1);
-      tile.text.scale.set(1);
     });
   };
 
@@ -373,8 +368,8 @@
     tile.container.scale.set(0);
     return this.tween(durationMs, function (p) {
       if (!tile.container || tile.container._destroyed) return;
-      tile.container.scale.set(lerp(0, 1, p));
-    }, cssEase).then(function () {
+      tile.container.scale.set(cssEase(p));
+    }).then(function () {
       if (!tile.container || tile.container._destroyed) return;
       tile.container.scale.set(1);
     });
@@ -400,11 +395,19 @@
     }
     this.updateStatus(state.reached2048);
 
-    var moveMs = parseCssMsVar("--move-ms", 80);
-    var popMs = parseCssMsVar("--pop-ms", 120);
-    var appearMs = parseCssMsVar("--appear-ms", 120);
+    var moveMs = parseCssMsVar("--move-ms", 100);
+    var popMs = parseCssMsVar("--pop-ms", 200);
+    var appearMs = parseCssMsVar("--appear-ms", 200);
 
     const toRemove = new Set(events.removes.map((r) => r.id));
+
+    // Hide merge-target tiles during move — they'll pop back after arrival
+    for (const mg of events.merges) {
+      const into = this.tiles.get(mg.intoId);
+      if (!into) continue;
+      into.text.alpha = 0;
+      into.text.scale.set(0);
+    }
 
     const movePromises = [];
     for (const mv of events.moves) {
@@ -436,10 +439,11 @@
       for (const mg of events.merges) {
         const into = this.tiles.get(mg.intoId);
         if (!into) continue;
-        into.text.alpha = 0;
+        into.container.scale.set(0);
         into.value = mg.newValue;
         this.redrawTile(into);
         into.text.alpha = 1;
+        into.text.scale.set(1);
         this.tweenMergeReveal(into, popMs);
       }
 
