@@ -1,0 +1,263 @@
+:root {
+  --page-bg: #faf8ef;
+  --panel-text: #776e65;
+  --panel-muted: #9c948a;
+  --board-bg: #bbada0;
+  --cell-bg: rgba(238, 228, 218, 0.35);
+  --btn-bg: #8f7a66;
+  --btn-bg-hover: #7f6a56;
+  --btn-text: #f9f6f2;
+  --shadow: rgba(0, 0, 0, 0.18);
+
+  --board-size: min(92vw, 92svh, 500px);
+  --gap: clamp(4px, calc(var(--board-size) * 0.03), 15px);
+  --cell: calc((var(--board-size) - (var(--gap) * 5)) / 4);
+
+  --move-ms: 80ms;
+  --pop-ms: 120ms;
+  --appear-ms: 120ms;}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "Rubik", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", sans-serif;
+  background: var(--page-bg);
+  color: var(--panel-text);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+
+.page {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 28px 18px 40px;
+  display: grid;
+  gap: 18px;
+  position: relative;
+  z-index: 1;
+}
+
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.title-area {
+  min-width: 260px;
+}
+
+.title {
+  font-size: 72px;
+  letter-spacing: -2.5px;
+  margin: 0;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.subtitle {
+  margin: 10px 0 0;
+  color: var(--panel-muted);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+.panel {
+  display: grid;
+  gap: 12px;
+  justify-items: end;
+}
+
+.scores {
+  display: flex;
+  gap: 10px;
+}
+
+.score-card {
+  background: var(--board-bg);
+  color: var(--btn-text);
+  min-width: 104px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  text-align: center;
+  transition: transform 120ms ease-out;
+}
+
+.score-card:has(.score-value:empty),
+.score-card {
+  will-change: transform;
+}
+
+.score-label {
+  font-size: 11px;
+  letter-spacing: 1px;
+  opacity: 0.85;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.score-value {
+  margin-top: 4px;
+  font-size: 22px;
+  font-weight: 800;
+  transition: transform 100ms ease-out;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn {
+  appearance: none;
+  border: 0;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  box-shadow: 0 6px 14px -10px var(--shadow);
+  transition: background 150ms ease, transform 100ms ease, box-shadow 150ms ease;
+}
+
+.btn:hover {
+  background: var(--btn-bg-hover);
+  box-shadow: 0 8px 18px -8px var(--shadow);
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 3px 8px -6px var(--shadow);
+}
+
+.btn-primary {
+  background: #edc22e;
+  color: #5b5146;
+  box-shadow: 0 6px 14px -8px rgba(0,0,0,0.22);
+}
+
+.btn-primary:hover {
+  background: #e4b923;
+  box-shadow: 0 8px 18px -6px rgba(0,0,0,0.25);
+}
+
+.game-area {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+
+.status {
+  height: 18px;
+  font-size: 14px;
+  color: var(--panel-muted);
+  font-weight: 500;
+}
+
+.board {
+  position: relative;
+  width: var(--board-size);
+  height: var(--board-size);
+  background: var(--board-bg);
+  border-radius: 10px;
+  padding: 0;
+  touch-action: none;
+  user-select: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.stage {
+  position: absolute;
+  inset: 0;
+}
+
+.stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(238, 228, 218, 0.74);
+  border-radius: 10px;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.overlay[hidden] {
+  display: none;
+}
+
+.overlay-card {
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+}
+
+.overlay-title {
+  font-size: 44px;
+  font-weight: 900;
+  color: #776e65;
+  letter-spacing: -1px;
+}
+
+@media (max-width: 540px) {
+  .page {
+    padding: 18px 12px 26px;
+    gap: 12px;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .title {
+    font-size: 54px;
+  }
+
+  .panel {
+    justify-items: stretch;
+  }
+
+  .scores {
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .score-card {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .actions {
+    justify-content: flex-end;
+  }
+}
