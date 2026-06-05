@@ -5,12 +5,13 @@ import copy
 
 def create_game(size=4):
     """Create a fresh game state with two random tiles spawned."""
+    s = size if (isinstance(size, int) and size > 0) else 4
     state = {
-        "size": size,
+        "size": s,
         "score": 0,
         "reached2048": False,
         "nextId": 1,
-        "grid": [[0] * size for _ in range(size)],
+        "grid": _create_empty_grid(s),
         "tiles": {},
     }
     events = {"moves": [], "merges": [], "spawns": [], "removes": []}
@@ -22,7 +23,7 @@ def create_game(size=4):
 def move(state, direction):
     """Apply a move. Returns (new_state, moved, score_gained, reached2048, game_over, events)."""
     if direction not in ("left", "right", "up", "down"):
-        return (copy_state(state), False, 0, state.get("reached2048", False), not _can_move(state),
+        return (copy_state(state), False, 0, state.get("reached2048", False), False,
                 {"moves": [], "merges": [], "spawns": [], "removes": []})
 
     next_state = copy_state(state)
