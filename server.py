@@ -187,10 +187,8 @@ async def handle_move(ws, data):
 
     if not moved:
         if game_over:
-            # This player's board is dead. Check if opponent is also dead.
-            opp_state = game[opponent_key]["state"]
-            if not engine_can_move(opp_state):
-                await _end_game(game, reason="dead")
+            # This player has no valid moves — opponent wins
+            await _end_game(game, winner=(1 if player_num == 2 else 2), reason="dead")
         return
 
     game[player_key]["state"] = new_state
@@ -214,9 +212,8 @@ async def handle_move(ws, data):
         return
 
     if game_over:
-        opp_state = game[opponent_key]["state"]
-        if not engine_can_move(opp_state):
-            await _end_game(game, reason="dead")
+        # This player's board is now dead after the move — opponent wins
+        await _end_game(game, winner=(1 if player_num == 2 else 2), reason="dead")
 
 
 async def handle_rematch(ws):

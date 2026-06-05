@@ -660,7 +660,7 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  opacity: 0.5;
+  opacity: 0.65;
   z-index: 2;
 }
 
@@ -675,11 +675,11 @@ body {
 }
 
 .opp-mini-board {
-  width: 52px;
-  height: 52px;
+  width: 90px;
+  height: 90px;
   background: var(--board-bg);
-  border-radius: 3px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
 }
 
 /* ── Overlay scores ── */
@@ -718,8 +718,8 @@ body {
     gap: 4px;
   }
   .opp-mini-board {
-    width: 42px;
-    height: 42px;
+    width: 70px;
+    height: 70px;
   }
 }
 

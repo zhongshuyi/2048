@@ -225,8 +225,8 @@
     if (!this.oppBoardContainer) return;
     var container = this.oppBoardContainer;
     container.innerHTML = "";
-    var cellGap = Math.max(1, Math.floor(48 / (size * 5)));
-    var cellSize = Math.floor((48 - cellGap * (size + 1)) / size);
+    var cellGap = Math.max(1, Math.floor(90 / (size * 5)));
+    var cellSize = Math.floor((90 - cellGap * (size + 1)) / size);
 
     container.style.display = "grid";
     container.style.gridTemplateColumns = "repeat(" + size + ", " + cellSize + "px)";
@@ -245,7 +245,7 @@
           cell.textContent = value > 0 ? this.tileText(value) : "";
           cell.style.color = value >= 8 ? "#f9f6f2" : "#776e65";
           cell.style.fontWeight = "700";
-          cell.style.fontSize = Math.max(8, cellSize * 0.38) + "px";
+          cell.style.fontSize = Math.max(9, cellSize * 0.5) + "px";
         } else {
           cell.style.background = "rgba(238,228,218,0.35)";
         }
@@ -268,8 +268,7 @@
   };
 
   BattleClient.prototype.tileText = function (value) {
-    if (value === 2048) return "2K";
-    if (value >= 1000) return String(Math.floor(value / 1000)) + "K";
+    if (value >= 10000) return String(Math.floor(value / 1000)) + "K";
     return String(value);
   };
 
