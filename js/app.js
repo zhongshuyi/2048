@@ -130,11 +130,12 @@
     // Join bar
     this.els.joinBar.classList.toggle("hidden", locked);
 
-    // Panel headers
-    this.els.panelSolo.classList.toggle("hidden", locked);
-    this.els.panelRoom.classList.toggle("hidden", locked);
-    this.els.panelMatch.classList.toggle("hidden", locked);
-    this.els.gridSeg.style.display = m === "solo" ? "" : "none";
+    // Panels: show active tab's panel only when not playing
+    var activeTab = this.tab;
+    this.els.panelSolo.classList.toggle("hidden", activeTab !== "solo" || playing);
+    this.els.panelRoom.classList.toggle("hidden", activeTab !== "room" || playing);
+    this.els.panelMatch.classList.toggle("hidden", activeTab !== "match" || playing);
+    this.els.gridSeg.style.display = (!playing && activeTab === "solo") ? "" : "none";
     this.els.nickBar.style.display = "";
 
     // Cancel buttons: show only during waiting, in active tab panel
@@ -199,6 +200,10 @@
       tabs[i].classList.toggle("active", tabs[i].dataset.tab === name);
     }
 
+    // Panel visibility
+    this.els.panelSolo.classList.toggle("hidden", name !== "solo");
+    this.els.panelRoom.classList.toggle("hidden", name !== "room");
+    this.els.panelMatch.classList.toggle("hidden", name !== "match");
     this.els.gridSeg.style.display = name === "solo" ? "" : "none";
     this.els.joinBar.classList.toggle("hidden", name === "solo" || name === "room");
 
