@@ -23,7 +23,11 @@ ws_meta = {}  # WebSocket -> {"nickname": str, "in_game": bool}
 async def create_room(body: dict):
     mode = body.get("mode", "timed")
     grid_size = body.get("gridSize", 4)
+    if not isinstance(grid_size, int) or grid_size < 3 or grid_size > 8:
+        return {"error": "Invalid gridSize"}, 400
     time_limit = body.get("time") if mode == "timed" else None
+    if mode == "timed" and (not isinstance(time_limit, int) or time_limit <= 0):
+        return {"error": "Invalid time"}, 400
     code = manager.create_room(mode, grid_size, time_limit)
     return {"room_code": code}
 
@@ -177,7 +181,10 @@ async def handle_move(ws, data):
 
     if not moved:
         if game_over:
-            await _end_game(game, reason="dead")
+            # This player's board is dead. Check if opponent is also dead.
+            opp_state = game[opponent_key]["state"]
+            if not engine_can_move(opp_state):
+                await _end_game(game, reason="dead")
         return
 
     game[player_key]["state"] = new_state
@@ -210,6 +217,8 @@ async def handle_rematch(ws):
     game, player_num = manager.get_player_game(ws)
     if not game:
         return
+    if not game["finished"]:
+        return
     game["rematch_requested"].add(player_num)
 
     if len(game["rematch_requested"]) == 2:
@@ -233,6 +242,10 @@ async def handle_rematch(ws):
 
 async def handle_cancel(ws):
     manager.remove_from_queue(ws)
+    game, player_num = manager.get_player_game(ws)
+    if game and not game["finished"]:
+        opponent_num = 1 if player_num == 2 else 2
+        await _end_game(game, winner=opponent_num, reason="forfeit")
     code = ws_meta.get(ws, {}).get("room_code")
     if code:
         manager.delete_room(code)
@@ -295,7 +308,10 @@ async def _send_start(ws, game, player_num):
 
 async def _end_game(game, winner=0, reason="time"):
     """End game and notify both players. winner: 1=player1, 2=player2, 0=draw."""
+    if game.get("finished"):
+        return
     game["finished"] = True
+    manager.delete_game(game["id"])
 
     if winner == 1:
         p1_result, p2_result = "you", "opponent"
