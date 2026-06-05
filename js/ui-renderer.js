@@ -5,55 +5,43 @@
     return Math.max(0, Math.floor(n));
   }
 
-  // CSS cubic-bezier matching: precompute lookup table once
-  var CUBIC_SAMPLES = 128;
-  var EASE_OUT_TABLE = buildCubicBezierLUT(0.0, 0.0, 0.58, 1.0, CUBIC_SAMPLES);
-  var EASE_TABLE = buildCubicBezierLUT(0.25, 0.1, 0.25, 1.0, CUBIC_SAMPLES);
+  // ======== Spring Physics Engine ========
+  // Replaces cubic-bezier LUT with real damped harmonic oscillator.
+  // Semi-implicit Euler integration, stable at 60fps.
 
-  function buildCubicBezierLUT(x1, y1, x2, y2, n) {
-    var lut = new Float32Array(n + 1);
-    // sample the bezier curve at regular parameter intervals, then
-    // for each target x we find the nearest sample
-    var samples = [];
-    var steps = n * 4;
-    for (var i = 0; i <= steps; i++) {
-      var t = i / steps;
-      // bezier x(t)
-      var cx = 3 * (1 - t) * (1 - t) * t * x1 + 3 * (1 - t) * t * t * x2 + t * t * t;
-      var cy = 3 * (1 - t) * (1 - t) * t * y1 + 3 * (1 - t) * t * t * y2 + t * t * t;
-      samples.push({ x: cx, y: cy });
-    }
-    // nearest-neighbour lookup for each integer index 0..n
-    for (var ix = 0; ix <= n; ix++) {
-      var targetX = ix / n;
-      var best = samples[0].y;
-      var bestDist = Infinity;
-      for (var si = 0; si < samples.length; si++) {
-        var d = Math.abs(samples[si].x - targetX);
-        if (d < bestDist) { bestDist = d; best = samples[si].y; }
+  function createSpring(config) {
+    var p = config.from != null ? config.from : 0;
+    var v = config.velocity || 0;
+    var target = config.to != null ? config.to : 1;
+    var k = config.stiffness || 180;
+    var c = config.damping || 18;
+    var m = config.mass || 1;
+    var threshold = config.precision || 0.0005;
+    var settled = false;
+
+    return function (dt) {
+      if (settled) return target;
+      // Cap dt for stability after tab-away / visibility change
+      if (dt > 0.05) dt = 0.016;
+
+      var f = -k * (p - target) - c * v;
+      var a = f / m;
+      v += a * dt;
+      p += v * dt;
+
+      if (Math.abs(v) < threshold && Math.abs(p - target) < threshold) {
+        p = target;
+        v = 0;
+        settled = true;
       }
-      lut[ix] = best;
-    }
-    return lut;
+      return p;
+    };
   }
 
-  function cubicBezierLerp(t, lut) {
-    if (t <= 0) return 0;
-    if (t >= 1) return 1;
-    var idx = t * (lut.length - 1);
-    var lo = Math.floor(idx);
-    var hi = Math.min(lo + 1, lut.length - 1);
-    var frac = idx - lo;
-    return lut[lo] + (lut[hi] - lut[lo]) * frac;
-  }
-
-  function cssEaseOut(t) {
-    return cubicBezierLerp(t, EASE_OUT_TABLE);
-  }
-
-  function cssEase(t) {
-    return cubicBezierLerp(t, EASE_TABLE);
-  }
+  // Pre-configured spring profiles for different animation types
+  var SPRING_MERGE = { stiffness: 450, damping: 34 };
+  var SPRING_APPEAR = { stiffness: 500, damping: 36 };
+  var SPRING_MOVE = { stiffness: 900, damping: 58 };
 
   function lerp(a, b, t) {
     return a + (b - a) * t;
@@ -131,17 +119,31 @@
 
   Renderer.prototype.animateScore = function (fromVal, toVal, best) {
     var self = this;
-    var duration = 350;
+    var duration = 180;
     var start = performance.now();
     var ticker = this.app.ticker;
+
+    var spring = createSpring({
+      from: 0, to: 1,
+      stiffness: 500, damping: 36,
+      velocity: 0,
+    });
+    var lastTime = start;
+
     function tick() {
-      var t = (performance.now() - start) / duration;
-      if (t >= 1) {
+      var now = performance.now();
+      var elapsed = now - start;
+      var dt = (now - lastTime) / 1000;
+      lastTime = now;
+
+      if (elapsed >= duration) {
         self.scoreEl.textContent = String(clampInt(toVal));
         ticker.remove(tick);
         return;
       }
-      var current = Math.round(lerp(fromVal, toVal, cssEaseOut(Math.min(1, t))));
+
+      var sv = spring(dt);
+      var current = Math.round(lerp(fromVal, toVal, Math.min(1, sv)));
       self.scoreEl.textContent = String(clampInt(current));
     }
     ticker.add(tick);
@@ -209,12 +211,27 @@
     this.layers = { root, board, cells, tiles };
     this.drawStatic();
 
-    this.handleResize = () => this.resize();
+    this.handleResize = function () { this.resize(); }.bind(this);
     window.addEventListener("resize", this.handleResize);
-    this.handleOrientation = () => {
-      window.setTimeout(() => this.resize(), 60);
-    };
+    this.handleOrientation = function () {
+      window.setTimeout(function () { this.resize(); }.bind(this), 60);
+    }.bind(this);
     window.addEventListener("orientationchange", this.handleOrientation);
+  };
+
+  Renderer.prototype.destroy = function destroy() {
+    if (this.handleResize) {
+      window.removeEventListener("resize", this.handleResize);
+      this.handleResize = null;
+    }
+    if (this.handleOrientation) {
+      window.removeEventListener("orientationchange", this.handleOrientation);
+      this.handleOrientation = null;
+    }
+    if (this.app) {
+      this.app.destroy(true, { children: true });
+      this.app = null;
+    }
   };
 
   Renderer.prototype.resize = function resize() {
@@ -273,7 +290,7 @@
     container.addChild(text);
     container.scale.set(1);
 
-    const tile = { id, value, r, c, container, bg, text };
+    const tile = { id, value, r, c, container, bg, text, _animating: false };
     this.redrawTile(tile);
 
     container.pivot.set(this.cellSize / 2, this.cellSize / 2);
@@ -296,12 +313,10 @@
 
     g.clear();
 
-    // single solid fill — Apple philosophy: one color, no bands
     g.beginFill(s.bg, 1);
     g.drawRoundedRect(0, 0, w, h, radius);
     g.endFill();
 
-    // subtle top rim light — barely visible, soft depth
     g.lineStyle(1.5, 0xffffff, 0.12);
     g.drawRoundedRect(0.5, 0.5, w - 1, h - 1, radius);
 
@@ -315,16 +330,20 @@
     tile.text.position.set(w / 2, h / 2);
   };
 
+  // ======== Tween engine ========
+
+  // Standard linear-progress tween (for non-spring use)
   Renderer.prototype.tween = function tween(durationMs, update) {
     if (!this.app || durationMs <= 0) {
       update(1);
       return Promise.resolve();
     }
-    return new Promise((resolve) => {
-      const start = performance.now();
-      const ticker = this.app.ticker;
-      const tick = () => {
-        const t = (performance.now() - start) / durationMs;
+    var self = this;
+    return new Promise(function (resolve) {
+      var start = performance.now();
+      var ticker = self.app.ticker;
+      var tick = function () {
+        var t = (performance.now() - start) / durationMs;
         if (t >= 1) {
           update(1);
           ticker.remove(tick);
@@ -337,43 +356,132 @@
     });
   };
 
+  // Spring-driven tween: update receives raw spring value (may overshoot beyond [0,1])
+  Renderer.prototype.springTween = function springTween(durationMs, update, springConfig) {
+    if (!this.app || durationMs <= 0) {
+      update(1);
+      return Promise.resolve();
+    }
+    var self = this;
+    var cfg = springConfig || {};
+    var spring = createSpring({
+      from: cfg.from != null ? cfg.from : 0,
+      to: cfg.to != null ? cfg.to : 1,
+      velocity: cfg.velocity || 0,
+      stiffness: cfg.stiffness || 180,
+      damping: cfg.damping || 18,
+    });
+
+    return new Promise(function (resolve) {
+      var start = performance.now();
+      var lastTime = start;
+      var ticker = self.app.ticker;
+      var tick = function () {
+        var now = performance.now();
+        var elapsed = now - start;
+        var dt = (now - lastTime) / 1000;
+        lastTime = now;
+
+        var value = spring(dt);
+        update(value);
+
+        // Resolve as soon as minimum time has passed and spring is close enough
+        if (elapsed >= durationMs && Math.abs(value - (cfg.to != null ? cfg.to : 1)) < 0.03) {
+          update(cfg.to != null ? cfg.to : 1);
+          ticker.remove(tick);
+          resolve();
+          return;
+        }
+
+        // Hard deadline
+        if (elapsed >= durationMs * 2) {
+          update(cfg.to != null ? cfg.to : 1);
+          ticker.remove(tick);
+          resolve();
+        }
+      };
+      ticker.add(tick);
+    });
+  };
+
+  // ======== Tile animations ========
+
   Renderer.prototype.tweenMoveTo = function tweenMoveTo(tile, from, to, durationMs) {
+    var self = this;
     var fromP = this.cellToCenter(from.r, from.c);
     var toP = this.cellToCenter(to.r, to.c);
 
-    return this.tween(durationMs, function (p) {
-      var e = cssEaseOut(p);
-      tile.container.position.set(lerp(fromP.x, toP.x, e), lerp(fromP.y, toP.y, e));
+    tile._animating = true;
+
+    return this.springTween(durationMs, function (value) {
+      tile.container.position.set(
+        lerp(fromP.x, toP.x, value),
+        lerp(fromP.y, toP.y, value)
+      );
+    }, {
+      from: 0, to: 1,
+      stiffness: SPRING_MOVE.stiffness,
+      damping: SPRING_MOVE.damping,
+    }).then(function () {
+      tile._animating = false;
     });
   };
 
+  // Multi-phase merge reveal using spring physics:
+  // Phase 1: shrink (1 → 0.82) — tight spring, slight undershoot
+  // Phase 2: pop   (0.82 → overshoot → settle at 1) — looser spring with bounce
   Renderer.prototype.tweenMergeReveal = function tweenMergeReveal(tile, durationMs) {
-    return this.tween(durationMs, function (p) {
+    var self = this;
+    var shrinkMs = durationMs * 0.35;
+    var popMs = durationMs * 0.65;
+
+    tile._animating = true;
+
+    return self.springTween(shrinkMs, function (value) {
       if (!tile.container || tile.container._destroyed) return;
-      var ep = cssEase(p);
-      var s;
-      if (ep < 0.5) {
-        s = lerp(0, 1.2, ep * 2);
-      } else {
-        s = lerp(1.2, 1, (ep - 0.5) * 2);
-      }
-      tile.container.scale.set(s);
+      tile.container.scale.set(value);
+    }, {
+      from: 1, to: 0.82,
+      stiffness: 700, damping: 46,
+    }).then(function () {
+      if (!tile.container || tile.container._destroyed) return;
+
+      return self.springTween(popMs, function (value) {
+        if (!tile.container || tile.container._destroyed) return;
+        tile.container.scale.set(value);
+      }, {
+        from: 0.82, to: 1,
+        stiffness: 400, damping: 30,
+      });
     }).then(function () {
       if (!tile.container || tile.container._destroyed) return;
       tile.container.scale.set(1);
+      tile._animating = false;
     });
   };
 
+  // Spring-driven appear: scale from 0 with initial velocity for anticipation feel
   Renderer.prototype.tweenAppear = function tweenAppear(tile, durationMs) {
+    var self = this;
     tile.container.scale.set(0);
-    return this.tween(durationMs, function (p) {
+    tile._animating = true;
+
+    return self.springTween(durationMs, function (value) {
       if (!tile.container || tile.container._destroyed) return;
-      tile.container.scale.set(cssEase(p));
+      tile.container.scale.set(value);
+    }, {
+      from: 0, to: 1,
+      stiffness: SPRING_APPEAR.stiffness,
+      damping: SPRING_APPEAR.damping,
+      velocity: 3.5,
     }).then(function () {
       if (!tile.container || tile.container._destroyed) return;
       tile.container.scale.set(1);
+      tile._animating = false;
     });
   };
+
+  // ======== Full render & apply ========
 
   Renderer.prototype.renderFull = function renderFull(state, best) {
     this.hideOverlay();
@@ -386,6 +494,7 @@
   };
 
   Renderer.prototype.apply = function apply(state, best, events, scoreBefore, done) {
+    var self = this;
     this.hideOverlay();
 
     if (typeof scoreBefore === "number" && scoreBefore !== state.score) {
@@ -395,61 +504,69 @@
     }
     this.updateStatus(state.reached2048);
 
-    var moveMs = parseCssMsVar("--move-ms", 100);
-    var popMs = parseCssMsVar("--pop-ms", 200);
-    var appearMs = parseCssMsVar("--appear-ms", 200);
+    // Longer defaults for spring-driven animations
+    var moveMs = parseCssMsVar("--move-ms", 60);
+    var popMs = parseCssMsVar("--pop-ms", 120);
+    var appearMs = parseCssMsVar("--appear-ms", 120);
 
-    const toRemove = new Set(events.removes.map((r) => r.id));
+    const toRemove = new Set(events.removes.map(function (r) { return r.id; }));
 
-    // Hide merge-target tiles during move — they'll pop back after arrival
-    for (const mg of events.merges) {
-      const into = this.tiles.get(mg.intoId);
+    // Hide merge-target tiles during move
+    for (var mi = 0; mi < events.merges.length; mi++) {
+      var mg = events.merges[mi];
+      var into = this.tiles.get(mg.intoId);
       if (!into) continue;
       into.text.alpha = 0;
       into.text.scale.set(0);
     }
 
-    const movePromises = [];
-    for (const mv of events.moves) {
-      const tile = this.tiles.get(mv.id);
+    // Move phase
+    var movePromises = [];
+    for (var mvi = 0; mvi < events.moves.length; mvi++) {
+      var mv = events.moves[mvi];
+      var tile = this.tiles.get(mv.id);
       if (!tile) continue;
       tile.r = mv.to.r;
       tile.c = mv.to.c;
-      const p = this.tweenMoveTo(tile, mv.from, mv.to, moveMs).then(() => {
-        if (toRemove.has(mv.id)) {
-          tile.container.alpha = 0;
-        }
-      });
-      movePromises.push(p);
+      (function (t, mvId) {
+        var p = self.tweenMoveTo(t, mv.from, mv.to, moveMs).then(function () {
+          if (toRemove.has(mvId)) {
+            t.container.alpha = 0;
+          }
+        });
+        movePromises.push(p);
+      })(tile, mv.id);
     }
 
-    const afterMoves = () => {
-      const removeTile = (id) => {
-        const tile = this.tiles.get(id);
+    var afterMoves = function () {
+      var removeTile = function (id) {
+        var tile = self.tiles.get(id);
         if (!tile) return;
-        this.layers.tiles.removeChild(tile.container);
+        self.layers.tiles.removeChild(tile.container);
         tile.container.destroy({ children: true });
-        this.tiles.delete(id);
+        self.tiles.delete(id);
       };
 
-      for (const rm of events.removes) {
-        removeTile(rm.id);
+      for (var ri = 0; ri < events.removes.length; ri++) {
+        removeTile(events.removes[ri].id);
       }
 
-      for (const mg of events.merges) {
-        const into = this.tiles.get(mg.intoId);
-        if (!into) continue;
-        into.container.scale.set(0);
-        into.value = mg.newValue;
-        this.redrawTile(into);
-        into.text.alpha = 1;
-        into.text.scale.set(1);
-        this.tweenMergeReveal(into, popMs);
+      for (var mgi = 0; mgi < events.merges.length; mgi++) {
+        var mg2 = events.merges[mgi];
+        var into2 = self.tiles.get(mg2.intoId);
+        if (!into2) continue;
+        into2.container.scale.set(1);
+        into2.value = mg2.newValue;
+        self.redrawTile(into2);
+        into2.text.alpha = 1;
+        into2.text.scale.set(1);
+        self.tweenMergeReveal(into2, popMs);
       }
 
-      for (const sp of events.spawns) {
-        const tile = this.createTile(sp.id, sp.value, sp.at.r, sp.at.c);
-        this.tweenAppear(tile, appearMs);
+      for (var si = 0; si < events.spawns.length; si++) {
+        var sp = events.spawns[si];
+        var newTile = self.createTile(sp.id, sp.value, sp.at.r, sp.at.c);
+        self.tweenAppear(newTile, appearMs);
       }
 
       if (done) done();
@@ -469,4 +586,3 @@
     },
   };
 })();
-
