@@ -1,11 +1,10 @@
 """Python port of Engine2048 -- identical logic to js/game-engine.js."""
 import random
-import copy
 
 
 def create_game(size=4):
     """Create a fresh game state with two random tiles spawned."""
-    s = size if (isinstance(size, int) and size > 0) else 4
+    s = size if (isinstance(size, int) and not isinstance(size, bool) and size > 0) else 4
     state = {
         "size": s,
         "score": 0,
@@ -23,10 +22,10 @@ def create_game(size=4):
 def move(state, direction):
     """Apply a move. Returns (new_state, moved, score_gained, reached2048, game_over, events)."""
     if direction not in ("left", "right", "up", "down"):
-        return (copy_state(state), False, 0, state.get("reached2048", False), False,
+        return (_copy_state(state), False, 0, state.get("reached2048", False), False,
                 {"moves": [], "merges": [], "spawns": [], "removes": []})
 
-    next_state = copy_state(state)
+    next_state = _copy_state(state)
     events = {"moves": [], "merges": [], "spawns": [], "removes": []}
 
     moved = False
@@ -55,11 +54,7 @@ def move(state, direction):
     return (next_state, True, score_gained, next_state.get("reached2048", False), game_over, events)
 
 
-def can_move(state):
-    return _can_move(state)
-
-
-def copy_state(state):
+def _copy_state(state):
     """Deep-copy game state (no shared references)."""
     tiles = {}
     for tid, t in state["tiles"].items():
