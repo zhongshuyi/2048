@@ -39,9 +39,9 @@
   }
 
   // Pre-configured spring profiles for different animation types
-  var SPRING_MERGE = { stiffness: 450, damping: 34 };
-  var SPRING_APPEAR = { stiffness: 500, damping: 36 };
-  var SPRING_MOVE = { stiffness: 900, damping: 58 };
+  var SPRING_MERGE = { stiffness: 1200, damping: 40 };
+  var SPRING_APPEAR = { stiffness: 900, damping: 34 };
+  var SPRING_MOVE = { stiffness: 900, damping: 32 };
 
   function lerp(a, b, t) {
     return a + (b - a) * t;
@@ -119,13 +119,13 @@
 
   Renderer.prototype.animateScore = function (fromVal, toVal, best) {
     var self = this;
-    var duration = 180;
+    var duration = 200;
     var start = performance.now();
     var ticker = this.app.ticker;
 
     var spring = createSpring({
       from: 0, to: 1,
-      stiffness: 500, damping: 36,
+      stiffness: 600, damping: 42,
       velocity: 0,
     });
     var lastTime = start;
@@ -394,7 +394,7 @@
         }
 
         // Hard deadline
-        if (elapsed >= durationMs * 2) {
+        if (elapsed >= durationMs * 1.5) {
           update(cfg.to != null ? cfg.to : 1);
           ticker.remove(tick);
           resolve();
@@ -441,8 +441,8 @@
       if (!tile.container || tile.container._destroyed) return;
       tile.container.scale.set(value);
     }, {
-      from: 1, to: 0.82,
-      stiffness: 700, damping: 46,
+      from: 1, to: 0.75,
+      stiffness: 1200, damping: 54,
     }).then(function () {
       if (!tile.container || tile.container._destroyed) return;
 
@@ -450,8 +450,8 @@
         if (!tile.container || tile.container._destroyed) return;
         tile.container.scale.set(value);
       }, {
-        from: 0.82, to: 1,
-        stiffness: 400, damping: 30,
+        from: 0.75, to: 1,
+        stiffness: 1600, damping: 40,
       });
     }).then(function () {
       if (!tile.container || tile.container._destroyed) return;
@@ -473,7 +473,7 @@
       from: 0, to: 1,
       stiffness: SPRING_APPEAR.stiffness,
       damping: SPRING_APPEAR.damping,
-      velocity: 3.5,
+      velocity: 3.0,
     }).then(function () {
       if (!tile.container || tile.container._destroyed) return;
       tile.container.scale.set(1);
@@ -505,9 +505,9 @@
     this.updateStatus(state.reached2048);
 
     // Longer defaults for spring-driven animations
-    var moveMs = parseCssMsVar("--move-ms", 60);
-    var popMs = parseCssMsVar("--pop-ms", 120);
-    var appearMs = parseCssMsVar("--appear-ms", 120);
+    var moveMs = parseCssMsVar("--move-ms", 80);
+    var popMs = parseCssMsVar("--pop-ms", 130);
+    var appearMs = parseCssMsVar("--appear-ms", 100);
 
     const toRemove = new Set(events.removes.map(function (r) { return r.id; }));
 

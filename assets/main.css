@@ -13,9 +13,9 @@
   --gap: clamp(4px, calc(var(--board-size) * 0.03), 15px);
   --cell: calc((var(--board-size) - (var(--gap) * 5)) / 4);
 
-  --move-ms: 60ms;
-  --pop-ms: 120ms;
-  --appear-ms: 120ms;}
+  --move-ms: 80ms;
+  --pop-ms: 130ms;
+  --appear-ms: 100ms;}
 
 *,
 *::before,
