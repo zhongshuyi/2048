@@ -2,6 +2,7 @@
 import random
 import string
 import time
+from collections import deque
 from game.engine import create_game
 
 
@@ -43,6 +44,8 @@ class RoomManager:
             return None
         if room["state"] != "waiting":
             return None
+        if room["joiner_ws"] is not None:
+            return None
         room["joiner_ws"] = ws
         room["state"] = "playing"
         return room
@@ -50,7 +53,7 @@ class RoomManager:
     def enqueue_match(self, mode, grid_size, time_limit, ws):
         key = self._queue_key(mode, grid_size, time_limit)
         if key not in self.match_queues:
-            self.match_queues[key] = []
+            self.match_queues[key] = deque()
         self.match_queues[key].append(ws)
 
     def dequeue_match(self, mode, grid_size, time_limit):
@@ -58,17 +61,17 @@ class RoomManager:
         key = self._queue_key(mode, grid_size, time_limit)
         queue = self.match_queues.get(key, [])
         if len(queue) >= 2:
-            ws1 = queue.pop(0)
-            ws2 = queue.pop(0)
+            ws1 = queue.popleft()
+            ws2 = queue.popleft()
             return ws1, ws2
         return None, None
 
     def remove_from_queue(self, ws):
         for key in list(self.match_queues.keys()):
             queue = self.match_queues[key]
-            if ws in queue:
-                queue.remove(ws)
-            if len(queue) == 0:
+            new_queue = deque([w for w in queue if w != ws])
+            self.match_queues[key] = new_queue
+            if len(new_queue) == 0:
                 del self.match_queues[key]
 
     def create_game(self, mode, grid_size, time_limit, nickname1, nickname2, ws1, ws2):
