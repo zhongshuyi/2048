@@ -1,0 +1,41 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "2048",
+  "version": "0.1.0",
+  "identifier": "com.zhongshuyi.2048",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:8080",
+    "beforeBuildCommand": "node scripts/build-dist.mjs"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "2048",
+        "width": 920,
+        "height": 820,
+        "minWidth": 520,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "android": {
+      "debugApplicationIdSuffix": ".debug"
+    }
+  }
+}

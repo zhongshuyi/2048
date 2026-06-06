@@ -1,0 +1,23 @@
+{
+  "name": "2048",
+  "version": "1.0.0",
+  "description": "经典 2048 游戏 + 实时双人对战。",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@gitee.com:zhong_shu_yi/2048.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11.2",
+    "javascript-obfuscator": "^5.4.3"
+  }
+}
