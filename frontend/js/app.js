@@ -186,9 +186,11 @@
   App.prototype.connectServer = function () {
     var raw = this.els.connInput.value.trim();
     if (!raw) return;
-    // Auto-prepend ws:// if no protocol specified
+    // Auto-normalize URL: add ws:// prefix and /ws/play path if missing
     var url = raw;
     if (!/^wss?:\/\//i.test(url)) url = "ws://" + url;
+    // Append default WebSocket path if no path present
+    if (!/\/\/[^\/]+\/.+/.test(url)) url = url.replace(/\/?$/, "/ws/play");
     if (!window.BattleClient) return;
 
     // Clean up any pending check
