@@ -734,15 +734,16 @@
         self.els.myScore.textContent = String(self.state.score);
       }
       if (result.gameOver && self.mode === "solo") self.renderer.showOverlay("游戏结束!");
-      if (self.mode === "playing" && self._opponentDead) {
-        self.els.statusText.textContent = "对手棋盘已满，无法移动！";
-      }
       if (self.pendingDirection) {
         var next = self.pendingDirection;
         self.pendingDirection = null;
         self.tryMove(next);
       }
     });
+    // Fix status text immediately after apply (updateStatus inside apply clears it)
+    if (this.mode === "playing" && this._opponentDead) {
+      this.els.statusText.textContent = "对手棋盘已满，无法移动！";
+    }
   };
 
   function boot() {
