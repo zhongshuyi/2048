@@ -228,7 +228,7 @@
 
   App.prototype._onConnected = function () {
     this.wsConnected = true;
-    if (window.Storage2048) window.Storage2048.setServerUrl(raw);
+    if (window.Storage2048) window.Storage2048.setServerUrl(this.els.connInput.value.trim());
     this.els.connDot.classList.add("connected");
     this.els.connBtn.textContent = "断开";
     this.els.connBtn.disabled = false;
