@@ -490,6 +490,7 @@
 
   App.prototype.onBattleStart = function (msg) {
     var self = this;
+    this._opponentDead = false;
     this.setMode("playing");
 
     this.els.myName.textContent = this.battle.nickname;
@@ -525,7 +526,7 @@
   };
 
   App.prototype.onOpponentDead = function (msg) {
-    this.els.statusText.textContent = "对手棋盘已满，无法移动！";
+    this._opponentDead = true;
   };
 
   App.prototype.onOpponentMove = function (msg) {
@@ -573,6 +574,7 @@
   };
 
   App.prototype.exitBattle = function () {
+    this._opponentDead = false;
     if (this.battle) {
       this.battle.cancel();
       this.battle.stopTimer();
@@ -732,6 +734,9 @@
         self.els.myScore.textContent = String(self.state.score);
       }
       if (result.gameOver && self.mode === "solo") self.renderer.showOverlay("游戏结束!");
+      if (self.mode === "playing" && self._opponentDead) {
+        self.els.statusText.textContent = "对手棋盘已满，无法移动！";
+      }
       if (self.pendingDirection) {
         var next = self.pendingDirection;
         self.pendingDirection = null;
