@@ -141,11 +141,13 @@
     this.els.battleHeader.classList.toggle("hidden", !playing);
     this.els.oppBoardWrap.classList.toggle("hidden", !playing);
 
-    // Board: show only in solo (solo tab) or playing — use visibility to prevent layout jump
+    // Board: show only in solo (solo tab) or playing — maxHeight collapse + opacity fade
     var showBoard = (solo && this.tab === "solo") || playing;
-    this.els.board.style.visibility = showBoard ? "" : "hidden";
-    this.els.stage.style.visibility = showBoard ? "" : "hidden";
-    this.els.statusText.style.visibility = showBoard ? "" : "hidden";
+    this.els.board.style.maxHeight = showBoard ? "600px" : "0";
+    this.els.board.style.opacity = showBoard ? "" : "0";
+    this.els.board.style.pointerEvents = showBoard ? "" : "none";
+    this.els.board.style.overflow = showBoard ? "" : "hidden";
+    this.els.statusText.style.opacity = showBoard ? "" : "0";
     this.els.statusText.style.height = showBoard ? "" : "0";
 
     // Scores: only in solo tab of solo mode
