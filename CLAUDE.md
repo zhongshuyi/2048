@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**Important**: Do NOT add `Co-Authored-By` trailer to commit messages. The author is the sole contributor.
+
 ## Run
 
 ```
