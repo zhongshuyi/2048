@@ -185,8 +185,10 @@ async def handle_join_match(ws, data):
 async def handle_move(ws, data):
     game, player_num = manager.get_player_game(ws)
     if not game or game["finished"]:
+        print(f"[MOVE] game not found or finished, ws={ws}", flush=True)
         await ws.send_json({"type": "error", "message": "Not in a game"})
         return
+    print(f"[MOVE] game={game['id']} mode={game['mode']} player={player_num} score={data.get('state', {}).get('score', '?')}", flush=True)
 
     direction = data.get("direction")
     if direction not in ("left", "right", "up", "down"):
