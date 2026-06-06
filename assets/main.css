@@ -411,7 +411,8 @@ body {
 }
 
 .conn-btn {
-  min-width: 56px;
+  min-width: 80px;
+  text-align: center;
 }
 
 /* ── Nickname bar ── */
