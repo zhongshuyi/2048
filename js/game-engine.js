@@ -1,6 +1,26 @@
 (function () {
   const DEFAULT_SIZE = 4;
 
+  const TILE_STYLES = {
+    2:    { bg: 0xeee4da, fg: 0x776e65, size: 44 },
+    4:    { bg: 0xede0c8, fg: 0x776e65, size: 44 },
+    8:    { bg: 0xf2b179, fg: 0xf9f6f2, size: 44 },
+    16:   { bg: 0xf59563, fg: 0xf9f6f2, size: 44 },
+    32:   { bg: 0xf67c5f, fg: 0xf9f6f2, size: 44 },
+    64:   { bg: 0xf65e3b, fg: 0xf9f6f2, size: 44 },
+    128:  { bg: 0xedcf72, fg: 0xf9f6f2, size: 38 },
+    256:  { bg: 0xedcc61, fg: 0xf9f6f2, size: 38 },
+    512:  { bg: 0xedc850, fg: 0xf9f6f2, size: 38 },
+    1024: { bg: 0xedc53f, fg: 0xf9f6f2, size: 32 },
+    2048: { bg: 0xedc22e, fg: 0xf9f6f2, size: 32 },
+  };
+
+  const TILE_COLORS = {
+    2: "#eee4da", 4: "#ede0c8", 8: "#f2b179", 16: "#f59563",
+    32: "#f67c5f", 64: "#f65e3b", 128: "#edcf72", 256: "#edcc61",
+    512: "#edc850", 1024: "#edc53f", 2048: "#edc22e",
+  };
+
   function cloneGrid(grid) {
     return grid.map((row) => row.slice());
   }
@@ -38,29 +58,16 @@
     const { grid, tiles, size } = state;
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size; c++) {
-        if (grid[r][c] === 0) {
-          return true;
-        }
-      }
-    }
-    for (let r = 0; r < size; r++) {
-      for (let c = 0; c < size; c++) {
         const id = grid[r][c];
-        if (id === 0) {
-          continue;
-        }
+        if (id === 0) return true;
         const v = tiles[id].value;
         if (r + 1 < size) {
           const downId = grid[r + 1][c];
-          if (downId !== 0 && tiles[downId].value === v) {
-            return true;
-          }
+          if (downId === 0 || tiles[downId].value === v) return true;
         }
         if (c + 1 < size) {
           const rightId = grid[r][c + 1];
-          if (rightId !== 0 && tiles[rightId].value === v) {
-            return true;
-          }
+          if (rightId === 0 || tiles[rightId].value === v) return true;
         }
       }
     }
@@ -71,8 +78,18 @@
     return Math.random() < 0.9 ? 2 : 4;
   }
 
-  function addRandomTile(state, events) {
-    const empties = collectEmptyCells(state.grid);
+  function addRandomTile(state, events, excludeAdjacentTo) {
+    var empties = collectEmptyCells(state.grid);
+    if (excludeAdjacentTo) {
+      var filtered = [];
+      for (var i = 0; i < empties.length; i++) {
+        var cell = empties[i];
+        if (Math.abs(cell.r - excludeAdjacentTo.r) + Math.abs(cell.c - excludeAdjacentTo.c) > 1) {
+          filtered.push(cell);
+        }
+      }
+      if (filtered.length > 0) empties = filtered;
+    }
     const spot = pickRandom(empties);
     if (!spot) {
       return;
@@ -146,25 +163,21 @@
       writePos++;
     }
 
-    const originalPos = {};
+    const originalPos = new Map();
     for (let pos = 0; pos < size; pos++) {
       const id = original[pos];
-      if (id !== 0) {
-        originalPos[id] = pos;
-      }
+      if (id !== 0) originalPos.set(id, pos);
     }
 
-    const targetPos = {};
+    const targetPos = new Map();
     for (let pos = 0; pos < size; pos++) {
       const id = nextLine[pos];
-      if (id !== 0) {
-        targetPos[id] = pos;
-      }
+      if (id !== 0) targetPos.set(id, pos);
     }
 
     for (const idStr of ids) {
-      const fromPos = originalPos[idStr];
-      let toPos = targetPos[idStr];
+      const fromPos = originalPos.get(idStr);
+      let toPos = targetPos.get(idStr);
 
       const merge = merges.find((m) => m.fromIds[1] === idStr);
       if (merge) {
@@ -230,8 +243,16 @@
       tiles: {},
     };
     const events = { moves: [], merges: [], spawns: [], removes: [] };
-    addRandomTile(state, events);
-    addRandomTile(state, events);
+    const empties = collectEmptyCells(state.grid);
+    const firstSpot = pickRandom(empties);
+    if (firstSpot) {
+      const id = String(state.nextId++);
+      const value = newTileValue();
+      state.grid[firstSpot.r][firstSpot.c] = id;
+      state.tiles[id] = { id, value, r: firstSpot.r, c: firstSpot.c };
+      events.spawns.push({ id, at: { r: firstSpot.r, c: firstSpot.c }, value });
+    }
+    addRandomTile(state, events, firstSpot);
     return { state, events };
   }
 
@@ -281,6 +302,8 @@
   window.Engine2048 = {
     createGame,
     move,
+    TILE_STYLES: TILE_STYLES,
+    TILE_COLORS: TILE_COLORS,
   };
 })();
 

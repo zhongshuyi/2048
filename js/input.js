@@ -12,19 +12,19 @@
     }
 
     function onKeyDown(e) {
-      const key = e.key;
-      if (key === "ArrowLeft") {
+      var tag = (e.target && e.target.tagName) || "";
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || e.target.isContentEditable) return;
+
+      var dir = null;
+      var key = e.key;
+      if (key === "ArrowLeft"  || key === "a" || key === "A") { dir = "left"; }
+      else if (key === "ArrowRight" || key === "d" || key === "D") { dir = "right"; }
+      else if (key === "ArrowUp"    || key === "w" || key === "W") { dir = "up"; }
+      else if (key === "ArrowDown"  || key === "s" || key === "S") { dir = "down"; }
+
+      if (dir) {
         e.preventDefault();
-        emit("left");
-      } else if (key === "ArrowRight") {
-        e.preventDefault();
-        emit("right");
-      } else if (key === "ArrowUp") {
-        e.preventDefault();
-        emit("up");
-      } else if (key === "ArrowDown") {
-        e.preventDefault();
-        emit("down");
+        emit(dir);
       }
     }
 

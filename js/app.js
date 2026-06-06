@@ -11,6 +11,8 @@
     this.locked = false;
     this.pendingDirection = null;
     this.gridSize = 4;
+    this.history = [];
+    this.maxHistory = 32;
     this.tab = "solo";
     this.battle = null;
     this.mode = "solo";  // solo | waiting | playing
@@ -473,6 +475,10 @@
 
   App.prototype.unbindKeyboard = function () {
     if (this.unbindInput) { this.unbindInput(); this.unbindInput = null; }
+    if (this._undoKeyHandler) {
+      window.removeEventListener("keydown", this._undoKeyHandler);
+      this._undoKeyHandler = null;
+    }
   };
 
   App.prototype.bindInput = function bindInput() {
@@ -483,6 +489,17 @@
       element: this.els.board,
       onMove: function (dir) { self.tryMove(dir); },
     });
+
+    // Ctrl+Z undo
+    if (!this._undoKeyHandler) {
+      this._undoKeyHandler = function (e) {
+        if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z")) {
+          e.preventDefault();
+          self.undo();
+        }
+      };
+    }
+    window.addEventListener("keydown", this._undoKeyHandler);
   };
 
   // ── Util ──
@@ -504,8 +521,19 @@
     if (this.mode !== "solo") return;
     this.locked = false;
     this.pendingDirection = null;
+    this.history = [];
     var created = window.Engine2048.createGame(this.gridSize);
     this.state = created.state;
+    this.renderer.renderFull(this.state, this.best);
+  };
+
+  App.prototype.undo = function undo() {
+    if (this.mode !== "solo" || this.locked || this.history.length === 0) return;
+    var prev = this.history.pop();
+    this.locked = false;
+    this.pendingDirection = null;
+    this.state = prev.state;
+    this.best = prev.best;
     this.renderer.renderFull(this.state, this.best);
   };
 
@@ -514,6 +542,7 @@
     this.gridSize = newSize;
     this.locked = false;
     this.pendingDirection = null;
+    this.history = [];
     var created = window.Engine2048.createGame(newSize);
     this.state = created.state;
     this.renderer.setSize(newSize);
@@ -553,8 +582,14 @@
     if (this.locked) { this.pendingDirection = direction; return; }
     if (!this.state) return;
 
+    if (this.mode === "solo") {
+      this.history.push({ state: this.state, best: this.best });
+      if (this.history.length > this.maxHistory) this.history.shift();
+    }
+
     var result = window.Engine2048.move(this.state, direction);
     if (!result.moved) {
+      if (this.mode === "solo") this.history.pop();
       if (result.gameOver && this.mode === "solo") this.renderer.showOverlay("游戏结束!");
       return;
     }

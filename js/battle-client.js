@@ -4,6 +4,9 @@
   function BattleClient() {
     this.ws = null;
     this.connected = false;
+    this._intentionalClose = false;
+    this._pendingCb = null;
+    this._connectTimeout = null;
     this.app = null;
     this.renderer = null;
 
@@ -46,13 +49,21 @@
 
   BattleClient.prototype.connect = function () {
     var self = this;
+    this._intentionalClose = false;
     if (this.ws) {
       try { this.ws.close(); } catch (e) {}
     }
+    if (this._connectTimeout) { clearTimeout(this._connectTimeout); this._connectTimeout = null; }
+
     this.ws = new WebSocket(WS_URL);
 
     this.ws.onopen = function () {
       self.connected = true;
+      if (self._pendingCb) {
+        var cb = self._pendingCb;
+        self._pendingCb = null;
+        cb();
+      }
     };
 
     this.ws.onmessage = function (e) {
@@ -67,9 +78,11 @@
     this.ws.onclose = function () {
       self.connected = false;
       self.stopTimer();
-      if (self.app && self.app.onDisconnected) {
+      if (!self._intentionalClose && self.app && self.app.onDisconnected) {
         self.app.onDisconnected();
       }
+      self._intentionalClose = false;
+      self._pendingCb = null;
     };
 
     this.ws.onerror = function () {
@@ -88,15 +101,15 @@
       cb();
       return;
     }
-    var self = this;
+    this._pendingCb = cb;
     this.connect();
-    var check = setInterval(function () {
-      if (self.connected) {
-        clearInterval(check);
-        cb();
+    var self = this;
+    this._connectTimeout = setTimeout(function () {
+      self._connectTimeout = null;
+      if (self._pendingCb) {
+        self._pendingCb = null;
       }
-    }, 50);
-    setTimeout(function () { clearInterval(check); }, 5000);
+    }, 5000);
   };
 
   BattleClient.prototype.createRoom = function (mode, gridSize, timeLimit) {
@@ -177,6 +190,7 @@
   };
 
   BattleClient.prototype.cancel = function () {
+    this._intentionalClose = true;
     this.send({ type: "cancel" });
     this.stopTimer();
   };
@@ -303,11 +317,7 @@
   };
 
   BattleClient.prototype.tileColor = function (value) {
-    var map = {
-      2: "#eee4da", 4: "#ede0c8", 8: "#f2b179", 16: "#f59563",
-      32: "#f67c5f", 64: "#f65e3b", 128: "#edcf72", 256: "#edcc61",
-      512: "#edc850", 1024: "#edc53f", 2048: "#edc22e",
-    };
+    var map = (window.Engine2048 && window.Engine2048.TILE_COLORS) || {};
     return map[value] || (value <= 4096 ? "#3c3a32" : "#3c3a32");
   };
 
@@ -323,6 +333,7 @@
   };
 
   BattleClient.prototype.destroy = function () {
+    this._intentionalClose = true;
     this.stopTimer();
     if (this.ws) {
       try { this.ws.close(); } catch (e) {}

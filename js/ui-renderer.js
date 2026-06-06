@@ -1,4 +1,6 @@
 (function () {
+  var IS_MOBILE = /Mobi|Android/i.test(navigator.userAgent);
+
   function clampInt(n) {
     if (typeof n !== "number") return 0;
     if (!Number.isFinite(n)) return 0;
@@ -47,15 +49,15 @@
     return a + (b - a) * t;
   }
 
-  function parseCssPxVar(name, fallback) {
-    const styles = getComputedStyle(document.documentElement);
+  function parseCssPxVar(name, fallback, styles) {
+    styles = styles || getComputedStyle(document.documentElement);
     const raw = styles.getPropertyValue(name).trim();
     const v = parseFloat(raw);
     return Number.isFinite(v) ? v : fallback;
   }
 
-  function parseCssMsVar(name, fallback) {
-    const styles = getComputedStyle(document.documentElement);
+  function parseCssMsVar(name, fallback, styles) {
+    styles = styles || getComputedStyle(document.documentElement);
     const raw = styles.getPropertyValue(name).trim();
     const m = raw.match(/^(\d+(?:\.\d+)?)ms$/);
     if (!m) return fallback;
@@ -63,31 +65,20 @@
     return Number.isFinite(v) ? Math.max(0, Math.floor(v)) : fallback;
   }
 
+  var FALLBACK_STYLE_SUPER = { bg: 0x3c3a32, fg: 0xf9f6f2, size: 30 };
+  var FALLBACK_STYLE_MEGA = { bg: 0x3c3a32, fg: 0xf9f6f2, size: 26 };
+
   function valueStyle(value, boardScale, gridSize) {
     var bs = typeof boardScale === "number" && Number.isFinite(boardScale) ? boardScale : 1;
     var gs = typeof gridSize === "number" && gridSize > 0 ? gridSize : 4;
     var cellScale = 4 / gs;
     var s = Math.max(0.3, bs * cellScale);
-    var map = {
-      2:    { bg: 0xeee4da, fg: 0x776e65, size: 44 },
-      4:    { bg: 0xede0c8, fg: 0x776e65, size: 44 },
-      8:    { bg: 0xf2b179, fg: 0xf9f6f2, size: 44 },
-      16:   { bg: 0xf59563, fg: 0xf9f6f2, size: 44 },
-      32:   { bg: 0xf67c5f, fg: 0xf9f6f2, size: 44 },
-      64:   { bg: 0xf65e3b, fg: 0xf9f6f2, size: 44 },
-      128:  { bg: 0xedcf72, fg: 0xf9f6f2, size: 38 },
-      256:  { bg: 0xedcc61, fg: 0xf9f6f2, size: 38 },
-      512:  { bg: 0xedc850, fg: 0xf9f6f2, size: 38 },
-      1024: { bg: 0xedc53f, fg: 0xf9f6f2, size: 32 },
-      2048: { bg: 0xedc22e, fg: 0xf9f6f2, size: 32 },
-    };
+    var map = (window.Engine2048 && window.Engine2048.TILE_STYLES) || {};
     var base = map[value];
     if (!base) {
       base = value <= 4096
-        ? { bg: 0x3c3a32, fg: 0xf9f6f2, size: 30 }
-        : value <= 8192
-          ? { bg: 0x3c3a32, fg: 0xf9f6f2, size: 28 }
-          : { bg: 0x3c3a32, fg: 0xf9f6f2, size: 26 };
+        ? FALLBACK_STYLE_SUPER
+        : (value <= 8192 ? { bg: 0x3c3a32, fg: 0xf9f6f2, size: 28 } : FALLBACK_STYLE_MEGA);
     }
     var size = Math.max(10, Math.round(base.size * s));
     return { bg: base.bg, fg: base.fg, size: size };
@@ -167,9 +158,10 @@
   };
 
   Renderer.prototype.measure = function measure() {
-    const size = this.boardEl.clientWidth || parseCssPxVar("--board-size", 500);
+    var cs = getComputedStyle(document.documentElement);
+    const size = this.boardEl.clientWidth || parseCssPxVar("--board-size", 500, cs);
     this.boardSize = Math.floor(size);
-    var cssGap = parseCssPxVar("--gap", 15);
+    var cssGap = parseCssPxVar("--gap", 15, cs);
     var calcGap = Math.max(5, Math.min(15, Math.floor(this.boardSize / (this.size * 7))));
     this.gap = Math.min(cssGap, calcGap);
     this.cellSize = (this.boardSize - this.gap * (this.size + 1)) / this.size;
@@ -222,11 +214,16 @@
     this.layers = { root, board, cells, tiles };
     this.drawStatic();
 
-    this.handleResize = function () { this.resize(); }.bind(this);
+    var selfResize = this;
+    this.handleResize = function () {
+      if (selfResize._resizeTimer) clearTimeout(selfResize._resizeTimer);
+      selfResize._resizeTimer = setTimeout(function () { selfResize.resize(); }, 100);
+    };
     window.addEventListener("resize", this.handleResize);
     this.handleOrientation = function () {
-      window.setTimeout(function () { this.resize(); }.bind(this), 60);
-    }.bind(this);
+      if (selfResize._resizeTimer) clearTimeout(selfResize._resizeTimer);
+      selfResize._resizeTimer = setTimeout(function () { selfResize.resize(); }, 200);
+    };
     window.addEventListener("orientationchange", this.handleOrientation);
   };
 
@@ -253,8 +250,10 @@
       this.app.renderer.resize(this.boardSize, this.boardSize);
     }
     this.drawStatic();
-    for (var _i = 0, _vals = Array.from(this.tiles.values()); _i < _vals.length; _i++) {
-      var tile = _vals[_i];
+    var tilesIter = this.tiles.values();
+    var tileEntry;
+    while (!(tileEntry = tilesIter.next()).done) {
+      var tile = tileEntry.value;
       this.redrawTile(tile);
       tile.container.pivot.set(this.cellSize / 2, this.cellSize / 2);
       var pos = this.cellToCenter(tile.r, tile.c);
@@ -314,6 +313,8 @@
     return tile;
   };
 
+  var _textStyleCache = {};
+
   Renderer.prototype.redrawTile = function redrawTile(tile) {
     var radius = Math.max(3, Math.min(10, Math.round(this.cellSize * 0.08)));
     var scale = Math.max(0.5, Math.min(1, this.boardSize / 500));
@@ -332,12 +333,18 @@
     g.drawRoundedRect(0.5, 0.5, w - 1, h - 1, radius);
 
     tile.text.text = String(tile.value);
-    tile.text.style = new window.PIXI.TextStyle({
-      fontFamily: '"Rubik", "Arial", "system-ui", "sans-serif"',
-      fontWeight: "700",
-      fontSize: s.size,
-      fill: s.fg,
-    });
+    var cacheKey = s.size + "|" + s.fg;
+    var cached = _textStyleCache[cacheKey];
+    if (!cached) {
+      cached = new window.PIXI.TextStyle({
+        fontFamily: '"Rubik", "Arial", "system-ui", "sans-serif"',
+        fontWeight: "700",
+        fontSize: s.size,
+        fill: s.fg,
+      });
+      _textStyleCache[cacheKey] = cached;
+    }
+    tile.text.style = cached;
     tile.text.position.set(w / 2, h / 2);
   };
 
@@ -443,10 +450,25 @@
   // Phase 2: pop   (0.82 → overshoot → settle at 1) — looser spring with bounce
   Renderer.prototype.tweenMergeReveal = function tweenMergeReveal(tile, durationMs) {
     var self = this;
+    tile._animating = true;
+
+    if (IS_MOBILE) {
+      return self.springTween(durationMs, function (value) {
+        if (!tile.container || tile.container._destroyed) return;
+        tile.container.scale.set(value);
+      }, {
+        from: 0.5, to: 1,
+        stiffness: SPRING_MERGE.stiffness,
+        damping: SPRING_MERGE.damping,
+      }).then(function () {
+        if (!tile.container || tile.container._destroyed) return;
+        tile.container.scale.set(1);
+        tile._animating = false;
+      });
+    }
+
     var shrinkMs = durationMs * 0.35;
     var popMs = durationMs * 0.65;
-
-    tile._animating = true;
 
     return self.springTween(shrinkMs, function (value) {
       if (!tile.container || tile.container._destroyed) return;
