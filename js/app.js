@@ -165,13 +165,9 @@
     var inSoloTab = solo && this.tab === "solo";
     this._setHeaderVisible(inSoloTab, inSoloTab);
 
-    // Nickname: show only when connected and not in solo tab
-    if (this.wsConnected && this.tab !== "solo") {
-      this.els.nickBar.style.display = "";
-      this.els.nickInput.disabled = !solo;
-    } else {
-      this.els.nickBar.style.display = "none";
-    }
+    // Nickname: show only when connected, on battle tab, before committing
+    var showNick = this.wsConnected && solo && this.tab !== "solo";
+    this.els.nickBar.style.display = showNick ? "" : "none";
   };
 
   // ── Connection ──
