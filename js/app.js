@@ -122,6 +122,8 @@
     this.els.newGameBtn.classList.toggle("disabled", locked);
     if (locked) this.els.newGameBtn.setAttribute("disabled", "");
     else this.els.newGameBtn.removeAttribute("disabled");
+    var showNewGame = solo && this.tab === "solo";
+    this.els.newGameBtn.style.display = showNewGame ? "" : "none";
 
     // Config panels: only in solo mode, matching tab
     this.els.panelSolo.classList.toggle("hidden", !solo || this.tab !== "solo");

@@ -598,9 +598,13 @@ body {
 }
 
 .join-room-form .btn {
+  height: 42px;
   padding: 0 20px;
   border: 2px solid transparent;
   box-shadow: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .join-room-form .btn:hover { box-shadow: none; transform: none; }
 .join-room-form .btn:active { transform: none; }
