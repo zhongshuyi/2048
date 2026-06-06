@@ -704,7 +704,12 @@
     var result = window.Engine2048.move(this.state, direction);
     if (!result.moved) {
       if (this.mode === "solo") this.history.pop();
-      if (result.gameOver && this.mode === "solo") this.renderer.showOverlay("游戏结束!");
+      if (this.mode === "solo" && result.gameOver) this.renderer.showOverlay("游戏结束!");
+
+      // Battle mode: notify server when board is dead even if no move
+      if (this.mode === "playing" && this.battle && result.gameOver) {
+        this.battle.sendMove(direction, this.state, result.reached2048, true);
+      }
       return;
     }
     var scoreBefore = this.state.score;
