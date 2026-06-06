@@ -127,6 +127,16 @@ class RoomManager:
             if room["creator_ws"] == ws:
                 self.delete_room(code)
 
+    def cleanup_finished_games(self, max_age_seconds=300):
+        """Remove finished games older than max_age_seconds. Call periodically."""
+        now = time.time()
+        stale = []
+        for gid, game in self.games.items():
+            if game.get("finished") and now - game.get("start_time", 0) > max_age_seconds:
+                stale.append(gid)
+        for gid in stale:
+            self.delete_game(gid)
+
     @staticmethod
     def _queue_key(mode, grid_size, time_limit):
         t = time_limit if time_limit else 0

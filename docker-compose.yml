@@ -1,0 +1,42 @@
+# 2048 Battle Server — Docker Compose
+# Single-worker (no Redis):  docker compose up backend
+# Multi-worker (with Redis): docker compose --profile scaled up
+
+services:
+  frontend:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - MAX_GAMES=${MAX_GAMES:-0}
+      - REDIS_URL=${REDIS_URL:-}
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    profiles: ["scaled"]
+    restart: unless-stopped
+
+  backend-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    profiles: ["scaled"]
+    ports:
+      - "8082:8081"
+    environment:
+      - MAX_GAMES=${MAX_GAMES:-0}
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    restart: unless-stopped

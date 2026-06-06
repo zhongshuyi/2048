@@ -1,12 +1,23 @@
 """2048 Battle Mode — FastAPI server with WebSocket."""
 import json
 import asyncio
+import os
 
-from game.room_manager import RoomManager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 DIRECTIONS = frozenset(("left", "right", "up", "down"))
+
+# Select backend: Redis for multi-worker, in-memory for single process
+REDIS_URL = os.environ.get("REDIS_URL", "")
+MAX_GAMES = int(os.environ.get("MAX_GAMES", "0"))  # 0 = unlimited
+
+if REDIS_URL:
+    from game.room_manager_redis import RedisRoomManager
+    manager = RedisRoomManager(REDIS_URL)
+else:
+    from game.room_manager import RoomManager
+    manager = RoomManager()
 
 app = FastAPI(title="2048 Battle Server")
 app.add_middleware(
@@ -16,7 +27,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-manager = RoomManager()
 ws_meta = {}  # WebSocket -> {"nickname": str, "in_game": bool}
 
 
@@ -86,6 +96,9 @@ async def websocket_play(ws: WebSocket):
 # --- Message handlers ---
 
 async def handle_create_room(ws, data):
+    if MAX_GAMES and len(manager.games) >= MAX_GAMES:
+        await ws.send_json({"type": "error", "message": "Server full, try again later"})
+        return
     mode = data.get("mode", "timed")
     grid_size = data.get("gridSize", 4)
     time_limit = data.get("time") if mode == "timed" else None
@@ -134,6 +147,9 @@ async def handle_join_room(ws, data):
 
 
 async def handle_join_match(ws, data):
+    if MAX_GAMES and len(manager.games) >= MAX_GAMES:
+        await ws.send_json({"type": "error", "message": "Server full, try again later"})
+        return
     mode = data.get("mode", "timed")
     grid_size = data.get("gridSize", 4)
     time_limit = data.get("time") if mode == "timed" else None
@@ -410,6 +426,26 @@ async def _game_timer(game_id, total_seconds):
         await _end_game(game, reason="time")
 
 
+async def _periodic_cleanup():
+    """Background task: clean up stale finished games every 5 minutes."""
+    while True:
+        await asyncio.sleep(300)
+        if hasattr(manager, "cleanup_finished_games"):
+            manager.cleanup_finished_games()
+
+
+@app.on_event("startup")
+async def _start_cleanup():
+    asyncio.create_task(_periodic_cleanup())
+
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("server:app", host="0.0.0.0", port=8081, reload=True)
+    uvicorn.run(
+        "server:app",
+        host="0.0.0.0",
+        port=8081,
+        reload=False,
+        limit_max_requests=10000,
+        backlog=2048,
+    )
