@@ -113,4 +113,4 @@ Set `redis.enabled = true` in config to use `RedisRoomManager` instead of `RoomM
 
 **`vendor/pixi.min.js`**: PixiJS v7.4.2 **legacy** build (includes Canvas2D fallback). The sourceMappingURL at EOF was removed. If replacing, strip the last `//# sourceMappingURL=...` line.
 
-**Known issue**: `server.py` has two `_periodic_cleanup` definitions. The second (line ~446) overrides the first, so the lifespan task uses hardcoded 300s instead of `config.CLEANUP_INTERVAL`.
+**Note**: `server.py` cleanup interval now respects `config.CLEANUP_INTERVAL` (duplicate `_periodic_cleanup` definition removed).

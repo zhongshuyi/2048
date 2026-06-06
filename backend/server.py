@@ -443,14 +443,6 @@ async def _game_timer(game_id, total_seconds):
         await _end_game(game, reason="time")
 
 
-async def _periodic_cleanup():
-    """Background task: clean up stale finished games every 5 minutes."""
-    while True:
-        await asyncio.sleep(300)
-        if hasattr(manager, "cleanup_finished_games"):
-            await manager.cleanup_finished_games()
-
-
 # ---- Static file serving (SPA fallback) ----
 
 _static_path = Path(config.STATIC_DIR).resolve()

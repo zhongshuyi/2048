@@ -14,9 +14,9 @@
     "type": "git",
     "url": "git@github.com:zhongshuyi/2048.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["2048", "game", "multiplayer", "tauri", "pixijs"],
+  "author": "zhongshuyi",
+  "license": "MIT",
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.2",
     "javascript-obfuscator": "^5.4.3",
