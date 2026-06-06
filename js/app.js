@@ -508,6 +508,10 @@
     this.renderer.renderFull(this.state, this.best);
     this.renderer.hideOverlay();
 
+    // Reset battle header scores for new game
+    this.els.myScore.textContent = "0";
+    if (this.els.oppScore) this.els.oppScore.textContent = "0";
+
     this.battle.opponentNickname = msg.opponent_nickname;
     this.battle.renderOpponentMini(msg.opponent_board.grid, msg.gridSize);
 
