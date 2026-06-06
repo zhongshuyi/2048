@@ -225,6 +225,7 @@
     this.els.connDot.classList.add("connected");
     this.els.connBtn.textContent = "断开";
     this.els.connBtn.disabled = false;
+    this.els.nickBar.style.display = "";
     this.setMode("solo");
   };
 
@@ -241,6 +242,7 @@
     this.els.connDot.classList.remove("connected");
     this.els.connBtn.textContent = "连接";
     this.els.connBtn.disabled = false;
+    this.els.nickBar.style.display = "none";
     if (this.mode !== "solo") {
       this.setMode("solo");
       this.switchTab("solo");
