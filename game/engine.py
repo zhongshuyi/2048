@@ -107,21 +107,17 @@ def _can_move(state):
     size = state["size"]
     for r in range(size):
         for c in range(size):
-            if grid[r][c] == 0:
-                return True
-    for r in range(size):
-        for c in range(size):
             tid = grid[r][c]
             if tid == 0:
-                continue
+                return True
             v = tiles[tid]["value"]
             if r + 1 < size:
                 down_id = grid[r + 1][c]
-                if down_id != 0 and tiles[down_id]["value"] == v:
+                if down_id == 0 or tiles[down_id]["value"] == v:
                     return True
             if c + 1 < size:
                 right_id = grid[r][c + 1]
-                if right_id != 0 and tiles[right_id]["value"] == v:
+                if right_id == 0 or tiles[right_id]["value"] == v:
                     return True
     return False
 
@@ -208,10 +204,12 @@ def _move_line(state, direction, line_index, events):
         if tid != 0:
             target_pos[tid] = pos
 
+    merge_by_consumed = {m["fromIds"][1]: m for m in merges}
+
     for tid in ids:
         from_pos = original_pos.get(tid)
         to_pos = target_pos.get(tid)
-        merge = next((m for m in merges if m["fromIds"][1] == tid), None)
+        merge = merge_by_consumed.get(tid)
         if merge:
             to_pos = merge["toPos"]
         if from_pos is not None and to_pos is not None and from_pos != to_pos:

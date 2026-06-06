@@ -12,9 +12,11 @@ def _generate_code(length=6):
 
 class RoomManager:
     def __init__(self):
-        self.rooms = {}       # code -> Room dict
-        self.match_queues = {}  # "{mode}:{time}:{gridSize}" -> list of WebSocket
-        self.games = {}       # game_id -> Game dict
+        self.rooms = {}           # code -> Room dict
+        self.match_queues = {}    # "{mode}:{time}:{gridSize}" -> deque of WebSocket
+        self.games = {}           # game_id -> Game dict
+        self._ws_game = {}        # WebSocket -> (game, player_num) — reverse index
+        self._ws_queue_key = {}   # WebSocket -> queue key — for O(1) dequeue
 
     def create_room(self, mode, grid_size, time_limit=None):
         code = _generate_code()
@@ -55,6 +57,7 @@ class RoomManager:
         if key not in self.match_queues:
             self.match_queues[key] = deque()
         self.match_queues[key].append(ws)
+        self._ws_queue_key[ws] = key
 
     def dequeue_match(self, mode, grid_size, time_limit):
         """Try to pair. Returns (ws1, ws2) or (None, None) if no match yet."""
@@ -67,11 +70,17 @@ class RoomManager:
         return None, None
 
     def remove_from_queue(self, ws):
-        for key in list(self.match_queues.keys()):
-            queue = self.match_queues[key]
-            new_queue = deque([w for w in queue if w != ws])
-            self.match_queues[key] = new_queue
-            if len(new_queue) == 0:
+        key = self._ws_queue_key.pop(ws, None)
+        if key is None:
+            return
+        queue = self.match_queues.get(key)
+        if queue:
+            # Remove ws from deque (rare operation, small queue)
+            try:
+                queue.remove(ws)
+            except ValueError:
+                pass
+            if len(queue) == 0:
                 del self.match_queues[key]
 
     def create_game(self, mode, grid_size, time_limit, nickname1, nickname2, ws1, ws2):
@@ -90,34 +99,33 @@ class RoomManager:
             "finished": False,
         }
         self.games[game_id] = game
+        self._ws_game[ws1] = (game, 1)
+        self._ws_game[ws2] = (game, 2)
         return game
 
     def get_game(self, game_id):
         return self.games.get(game_id)
 
     def delete_game(self, game_id):
-        self.games.pop(game_id, None)
+        game = self.games.pop(game_id, None)
+        if game:
+            self._ws_game.pop(game["player1"]["ws"], None)
+            self._ws_game.pop(game["player2"]["ws"], None)
 
     def get_player_game(self, ws):
-        for gid, game in self.games.items():
-            if game["player1"]["ws"] == ws:
-                return game, 1
-            if game["player2"]["ws"] == ws:
-                return game, 2
+        entry = self._ws_game.get(ws)
+        if entry:
+            return entry
         return None, 0
 
     def cleanup_ws(self, ws):
         """Remove ws from everything — queues, rooms (as creator), games."""
         self.remove_from_queue(ws)
+        self._ws_game.pop(ws, None)
         for code in list(self.rooms.keys()):
             room = self.rooms[code]
             if room["creator_ws"] == ws:
                 self.delete_room(code)
-        for gid in list(self.games.keys()):
-            game = self.games[gid]
-            if game["player1"]["ws"] == ws or game["player2"]["ws"] == ws:
-                if not game["finished"]:
-                    game["finished"] = True
 
     @staticmethod
     def _queue_key(mode, grid_size, time_limit):
