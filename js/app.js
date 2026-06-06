@@ -165,8 +165,8 @@
     var inSoloTab = solo && this.tab === "solo";
     this._setHeaderVisible(inSoloTab, inSoloTab);
 
-    // Nickname: show when connected, lock when not in solo mode
-    if (this.wsConnected) {
+    // Nickname: show only when connected and not in solo tab
+    if (this.wsConnected && this.tab !== "solo") {
       this.els.nickBar.style.display = "";
       this.els.nickInput.disabled = !solo;
     } else {
