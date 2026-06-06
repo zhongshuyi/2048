@@ -215,6 +215,7 @@
         this.app.onGameOver(msg);
         break;
       case "error":
+        this.app.onServerError(msg);
         break;
     }
   };

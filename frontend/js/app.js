@@ -531,6 +531,17 @@
     this.bindInput();
   };
 
+  App.prototype.onServerError = function (msg) {
+    this.els.statusText.textContent = msg.message || "服务器错误";
+    var self = this;
+    if (this._errorTimer) clearTimeout(this._errorTimer);
+    this._errorTimer = setTimeout(function () {
+      if (self.els.statusText.textContent === (msg.message || "服务器错误")) {
+        self.els.statusText.textContent = "";
+      }
+    }, 5000);
+  };
+
   App.prototype.onOpponentDead = function (msg) {
     this._opponentDead = true;
   };
