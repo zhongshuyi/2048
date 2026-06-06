@@ -255,7 +255,6 @@ body {
   display: grid;
   justify-items: center;
   gap: 10px;
-  min-height: var(--board-size);
 }
 
 .status {
@@ -263,7 +262,6 @@ body {
   font-size: 14px;
   color: var(--panel-muted);
   font-weight: 500;
-  transition: opacity 0.3s ease;
 }
 
 .board {
@@ -273,7 +271,6 @@ body {
   background: var(--board-bg);
   border-radius: 10px;
   padding: 0;
-  transition: max-height 0.3s ease, opacity 0.3s ease;
   touch-action: none;
   user-select: none;
   box-shadow:
