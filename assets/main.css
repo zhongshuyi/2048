@@ -553,33 +553,33 @@ body {
 
 .battle-score {
   text-align: center;
-  min-width: 72px;
+  min-width: 90px;
 }
 
 .battle-score-label {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--panel-muted);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 1px;
 }
 
 .battle-score-name {
   font-weight: 900;
-  font-size: 12px;
+  font-size: 16px;
   color: var(--panel-text);
 }
 
 .battle-score-value {
   font-weight: 900;
-  font-size: 24px;
+  font-size: 38px;
   color: var(--panel-text);
 }
 
 .battle-timer {
   font-weight: 900;
-  font-size: 24px;
+  font-size: 38px;
   color: #f65e3b;
-  min-width: 48px;
+  min-width: 72px;
   text-align: center;
 }
 
@@ -694,13 +694,16 @@ body {
 
 @media (max-width: 540px) {
   .battle-header {
-    gap: 10px;
+    gap: 8px;
+  }
+  .battle-score {
+    min-width: 64px;
   }
   .battle-score-value {
-    font-size: 20px;
+    font-size: 24px;
   }
   .battle-timer {
-    font-size: 20px;
+    font-size: 24px;
   }
   .opp-mini {
     left: auto;
