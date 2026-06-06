@@ -544,7 +544,8 @@ body {
   align-items: center;
   justify-content: center;
   gap: 18px;
-  padding: 6px 0;
+  padding: 2px 0 0;
+  margin-bottom: -12px;
 }
 
 .battle-header.hidden {
@@ -695,6 +696,7 @@ body {
 @media (max-width: 540px) {
   .battle-header {
     gap: 8px;
+    margin-bottom: -8px;
   }
   .battle-score {
     min-width: 64px;
