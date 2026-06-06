@@ -376,7 +376,6 @@ async def _end_game(game, winner=0, reason="time"):
         return
     print(f"[END] game={game['id']} winner={winner} reason={reason} p1={game['player1']['score']} p2={game['player2']['score']}", flush=True)
     game["finished"] = True
-    manager.delete_game(game["id"])
 
     if winner == 1:
         p1_result, p2_result = "you", "opponent"
