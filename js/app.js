@@ -141,11 +141,17 @@
     this.els.battleHeader.classList.toggle("hidden", !playing);
     this.els.oppBoardWrap.classList.toggle("hidden", !playing);
 
-    // Board: show only in solo (solo tab) or playing
+    // Board: show only in solo (solo tab) or playing — use visibility to prevent layout jump
     var showBoard = (solo && this.tab === "solo") || playing;
-    this.els.board.style.display = showBoard ? "" : "none";
-    this.els.stage.style.display = showBoard ? "" : "none";
-    this.els.statusText.style.display = showBoard ? "" : "none";
+    this.els.board.style.visibility = showBoard ? "" : "hidden";
+    this.els.stage.style.visibility = showBoard ? "" : "hidden";
+    this.els.statusText.style.visibility = showBoard ? "" : "hidden";
+    this.els.statusText.style.height = showBoard ? "" : "0";
+
+    // Scores: only in solo tab of solo mode
+    var showScores = solo && this.tab === "solo";
+    var scoresEl = document.getElementById("scoresPanel");
+    if (scoresEl) scoresEl.style.visibility = showScores ? "" : "hidden";
   };
 
   // ── Nickname ──
