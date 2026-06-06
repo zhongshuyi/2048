@@ -120,8 +120,11 @@ async def handle_join_room(ws, data):
     )
     room["game_id"] = game["id"]
 
-    # Send start to both players
-    await _send_start(creator_ws, game, 1)
+    # Send start to both players — check creator still connected
+    ok = await _send_start(creator_ws, game, 1)
+    if not ok:
+        await _end_game(game, winner=2, reason="forfeit")
+        return
     await _send_start(ws, game, 2)
 
     # Start timer for timed mode
@@ -145,6 +148,16 @@ async def handle_join_match(ws, data):
             del manager.match_queues[key]
         ws2 = ws
 
+        # Check ws1 still connected (race condition guard)
+        try:
+            await ws1.send_json({"type": "ping"})
+        except Exception:
+            # Waiting player already disconnected — put current back in queue
+            manager.enqueue_match(mode, grid_size, time_limit, ws2)
+            ws_meta.pop(ws1, None)
+            await ws.send_json({"type": "waiting", "room_code": None})
+            return
+
         ws_meta[ws1]["in_game"] = True
         ws_meta[ws2]["in_game"] = True
 
@@ -154,7 +167,10 @@ async def handle_join_match(ws, data):
             ws1, ws2,
         )
 
-        await _send_start(ws1, game, 1)
+        ok1 = await _send_start(ws1, game, 1)
+        if not ok1:
+            await _end_game(game, winner=2, reason="forfeit")
+            return
         await _send_start(ws2, game, 2)
 
         if game["mode"] == "timed":
@@ -331,7 +347,7 @@ def _make_opponent_board(state):
 
 
 async def _send_start(ws, game, player_num):
-    """Send the 'start' message to a player."""
+    """Send the 'start' message to a player. Returns True on success."""
     own_key = f"player{player_num}"
     opp_key = f"player{1 if player_num == 2 else 2}"
     payload = {
@@ -346,8 +362,9 @@ async def _send_start(ws, game, player_num):
     }
     try:
         await ws.send_json(payload)
+        return True
     except Exception:
-        pass
+        return False
 
 
 async def _end_game(game, winner=0, reason="time"):
