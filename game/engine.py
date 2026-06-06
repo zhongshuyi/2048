@@ -243,5 +243,10 @@ def _move_line(state, direction, line_index, events):
 
     _write_line(state["grid"], size, direction, line_index, next_line)
 
-    changed = ",".join(str(x) for x in original) != ",".join(str(x) for x in next_line)
+    changed = len(merges) > 0
+    if not changed:
+        for tid in ids:
+            if original_pos.get(tid) != target_pos.get(tid):
+                changed = True
+                break
     return {"changed": changed, "scoreGained": score_gained}

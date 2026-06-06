@@ -220,7 +220,13 @@
 
     writeLine(state.grid, size, direction, lineIndex, nextLine);
 
-    return { changed: original.join(",") !== nextLine.join(","), scoreGained };
+    var changed = merges.length > 0;
+    if (!changed) {
+      for (var ci = 0; ci < ids.length; ci++) {
+        if (originalPos.get(ids[ci]) !== targetPos.get(ids[ci])) { changed = true; break; }
+      }
+    }
+    return { changed: changed, scoreGained };
   }
 
   function copyState(state) {

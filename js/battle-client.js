@@ -1,6 +1,6 @@
 (function () {
   function BattleClient(serverUrl) {
-    this._serverUrl = serverUrl || "ws://" + (window.location.hostname || "localhost") + ":8081/ws/play";
+    this._serverUrl = serverUrl;
     this.ws = null;
     this.connected = false;
     this._intentionalClose = false;
@@ -246,7 +246,7 @@
     };
 
     update();
-    this.timerInterval = setInterval(update, 50);
+    this.timerInterval = setInterval(update, countDown ? 50 : 200);
   };
 
   BattleClient.prototype.stopTimer = function () {

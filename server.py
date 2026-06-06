@@ -6,6 +6,8 @@ from game.room_manager import RoomManager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
+DIRECTIONS = frozenset(("left", "right", "up", "down"))
+
 app = FastAPI(title="2048 Battle Server")
 app.add_middleware(
     CORSMiddleware,
@@ -188,7 +190,7 @@ async def handle_move(ws, data):
         return
 
     direction = data.get("direction")
-    if direction not in ("left", "right", "up", "down"):
+    if direction not in DIRECTIONS:
         await ws.send_json({"type": "error", "message": "Invalid direction"})
         return
 

@@ -316,18 +316,17 @@
   };
 
   App.prototype.ensureSoloGame = function () {
-    if (!this.state) {
-      var created = window.Engine2048.createGame(this.gridSize);
-      this.state = created.state;
-      this.renderer.renderFull(this.state, this.best);
-    }
+    if (!this.state) this._newGame();
   };
 
   // ── Config buttons ──
 
   App.prototype.bindConfigButtons = function () {
     var self = this;
-    document.addEventListener("click", function (e) {
+    // Scope to lobby panels only, not entire document
+    var scope = document.querySelector(".page");
+    if (!scope) return;
+    scope.addEventListener("click", function (e) {
       var btn = e.target.closest(".seg-btn");
       if (!btn) return;
       var key = btn.dataset.key;
@@ -640,14 +639,24 @@
 
   // ── Solo ──
 
+  App.prototype._newGame = function (size) {
+    var s = size || this.gridSize;
+    var created = window.Engine2048.createGame(s);
+    this.state = created.state;
+    if (s !== this.gridSize) {
+      this.renderer.setSize(s);
+      this.gridSize = s;
+      this.syncGridPill();
+    }
+    this.renderer.renderFull(this.state, this.best);
+  };
+
   App.prototype.reset = function reset() {
     if (this.mode !== "solo") return;
     this.locked = false;
     this.pendingDirection = null;
     this.history = [];
-    var created = window.Engine2048.createGame(this.gridSize);
-    this.state = created.state;
-    this.renderer.renderFull(this.state, this.best);
+    this._newGame();
   };
 
   App.prototype.undo = function undo() {
@@ -662,15 +671,10 @@
 
   App.prototype.changeGridSize = function changeGridSize(newSize) {
     if (newSize === this.gridSize) return;
-    this.gridSize = newSize;
     this.locked = false;
     this.pendingDirection = null;
     this.history = [];
-    var created = window.Engine2048.createGame(newSize);
-    this.state = created.state;
-    this.renderer.setSize(newSize);
-    this.renderer.renderFull(this.state, this.best);
-    this.syncGridPill();
+    this._newGame(newSize);
   };
 
   App.prototype.syncGridPill = function syncGridPill() {
@@ -693,9 +697,7 @@
   };
 
   App.prototype.startSolo = function () {
-    var created = window.Engine2048.createGame(this.gridSize);
-    this.state = created.state;
-    this.renderer.renderFull(this.state, this.best);
+    this._newGame();
     this.bindInput();
     this.bindGridSelector();
     this.syncGridPill();
