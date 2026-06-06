@@ -184,8 +184,11 @@
   };
 
   App.prototype.connectServer = function () {
-    var url = this.els.connInput.value.trim();
-    if (!url) return;
+    var raw = this.els.connInput.value.trim();
+    if (!raw) return;
+    // Auto-prepend ws:// if no protocol specified
+    var url = raw;
+    if (!/^wss?:\/\//i.test(url)) url = "ws://" + url;
     if (!window.BattleClient) return;
 
     // Clean up any pending check
@@ -225,7 +228,7 @@
 
   App.prototype._onConnected = function () {
     this.wsConnected = true;
-    if (window.Storage2048) window.Storage2048.setServerUrl(this.els.connInput.value.trim());
+    if (window.Storage2048) window.Storage2048.setServerUrl(raw);
     this.els.connDot.classList.add("connected");
     this.els.connBtn.textContent = "断开";
     this.els.connBtn.disabled = false;
