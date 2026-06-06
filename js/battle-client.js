@@ -1,7 +1,6 @@
 (function () {
-  var WS_URL = "ws://" + (window.location.hostname || "localhost") + ":8081/ws/play";
-
-  function BattleClient() {
+  function BattleClient(serverUrl) {
+    this._serverUrl = serverUrl || "ws://" + (window.location.hostname || "localhost") + ":8081/ws/play";
     this.ws = null;
     this.connected = false;
     this._intentionalClose = false;
@@ -58,7 +57,7 @@
     }
     if (this._connectTimeout) { clearTimeout(this._connectTimeout); this._connectTimeout = null; }
 
-    this.ws = new WebSocket(WS_URL);
+    this.ws = new WebSocket(this._serverUrl);
 
     this.ws.onopen = function () {
       self.connected = true;

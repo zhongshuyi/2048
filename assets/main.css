@@ -370,6 +370,50 @@ body {
   }
 }
 
+/* ── Connection bar ── */
+
+.conn-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.conn-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #e74c3c;
+  flex-shrink: 0;
+  transition: background 200ms ease;
+}
+
+.conn-dot.connected {
+  background: #2ecc71;
+}
+
+.conn-input {
+  width: 260px;
+  padding: 6px 10px;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 13px;
+  border: 2px solid var(--seg-bg);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--panel-text);
+  outline: none;
+  transition: border-color 150ms ease;
+}
+
+.conn-input:focus {
+  border-color: var(--board-bg);
+}
+
+.conn-btn {
+  min-width: 56px;
+}
+
 /* ── Nickname bar ── */
 
 .nick-bar {

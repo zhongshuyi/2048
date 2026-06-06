@@ -15,6 +15,7 @@
     this.maxHistory = 32;
     this.tab = "solo";
     this.battle = null;
+    this.wsConnected = false;
     this.mode = "solo";  // solo | waiting | playing
 
     this.config = {
@@ -61,6 +62,9 @@
       oppName: byId("oppName"),
       oppScore: byId("oppScore"),
       oppBoardWrap: byId("oppBoardWrap"),
+      connDot: byId("connDot"),
+      connInput: byId("connInput"),
+      connBtn: byId("connBtn"),
     };
   }
 
@@ -80,28 +84,13 @@
     });
     this.renderer.init();
 
-    if (window.BattleClient) {
-      this.battle = new window.BattleClient();
-      this.battle.init(this);
-    }
-
     this.startSolo();
     this.bindActions();
+    this.bindConnection();
     this.bindLobbyTabs();
     this.bindConfigButtons();
     this.bindNickname();
     this.setMode("solo");
-
-    var params = new URLSearchParams(window.location.search);
-    var roomCode = params.get("room");
-    if (roomCode && this.battle) {
-      this.switchTab("join");
-      this.els.joinInput.value = roomCode.toUpperCase();
-      var self2 = this;
-      setTimeout(function () {
-        self2.doJoinRoom(roomCode);
-      }, 500);
-    }
   };
 
   // ── Mode controller ──
@@ -128,10 +117,18 @@
     var waiting = m === "waiting";
     var solo = m === "solo";
 
-    // Tabs: locked when not solo, hidden during playing
+    // Tabs: solo always enabled, others need wsConnected + solo mode
     var tabs = this.els.lobbyTabs.querySelectorAll(".lobby-tab");
     for (var i = 0; i < tabs.length; i++) {
-      tabs[i].classList.toggle("disabled", locked);
+      var t = tabs[i];
+      if (t.dataset.tab === "solo") {
+        t.classList.toggle("disabled", locked);
+      } else {
+        var lockTab = locked || !this.wsConnected;
+        t.classList.toggle("disabled", lockTab);
+        if (lockTab) t.setAttribute("disabled", "");
+        else t.removeAttribute("disabled");
+      }
     }
     this.els.lobbyTabs.classList.toggle("hidden", playing);
     this.els.newGameBtn.classList.toggle("disabled", locked);
@@ -161,6 +158,89 @@
     // Header visibility
     var inSoloTab = solo && this.tab === "solo";
     this._setHeaderVisible(inSoloTab, inSoloTab);
+  };
+
+  // ── Connection ──
+
+  App.prototype.bindConnection = function () {
+    var self = this;
+    this.els.connBtn.addEventListener("click", function () {
+      if (self.wsConnected) {
+        self.disconnectServer();
+      } else {
+        self.connectServer();
+      }
+    });
+  };
+
+  App.prototype.connectServer = function () {
+    var url = this.els.connInput.value.trim() || this.els.connInput.placeholder;
+    if (!window.BattleClient) return;
+
+    // Clean up any pending check
+    if (this._connectCheck) { clearInterval(this._connectCheck); this._connectCheck = null; }
+
+    this.els.connBtn.textContent = "连接中...";
+    this.els.connBtn.disabled = true;
+
+    // Always create fresh client (old one destroyed on disconnect)
+    this.battle = new window.BattleClient(url);
+    this.battle.init(this);
+    this.battle.nickname = this.els.nickInput.value.trim() || (window.Storage2048 ? window.Storage2048.getNickname() : "") || "Player";
+
+    var self = this;
+    this.battle.connect();
+
+    // Wait for connection or timeout
+    var attempts = 0;
+    this._connectCheck = setInterval(function () {
+      attempts++;
+      if (self.battle && self.battle.connected) {
+        clearInterval(self._connectCheck);
+        self._connectCheck = null;
+        self._onConnected();
+      } else if (attempts > 100) {
+        clearInterval(self._connectCheck);
+        self._connectCheck = null;
+        self.els.connBtn.textContent = "连接失败，重试";
+        self.els.connBtn.disabled = false;
+        if (self.battle) { self.battle.destroy(); self.battle = null; }
+        setTimeout(function () {
+          if (!self.wsConnected) self.els.connBtn.textContent = "连接";
+        }, 2000);
+      }
+    }, 50);
+  };
+
+  App.prototype._onConnected = function () {
+    this.wsConnected = true;
+    this.els.connDot.classList.add("connected");
+    this.els.connBtn.textContent = "断开";
+    this.els.connBtn.disabled = false;
+    this.els.nickInput.disabled = false;
+    this.setMode("solo");
+  };
+
+  App.prototype.disconnectServer = function () {
+    if (this._connectCheck) { clearInterval(this._connectCheck); this._connectCheck = null; }
+    if (this.battle) {
+      this.battle._intentionalClose = true;
+      this.battle.cancel();
+      this.battle.stopTimer();
+      this.battle.destroy();
+      this.battle = null;
+    }
+    this.wsConnected = false;
+    this.els.connDot.classList.remove("connected");
+    this.els.connBtn.textContent = "连接";
+    this.els.connBtn.disabled = false;
+    this.els.nickInput.disabled = true;
+    if (this.mode !== "solo") {
+      this.setMode("solo");
+      this.switchTab("solo");
+    } else {
+      this.setMode("solo");
+    }
   };
 
   // ── Nickname ──
@@ -456,11 +536,19 @@
   };
 
   App.prototype.onDisconnected = function () {
+    this.wsConnected = false;
+    this.els.connDot.classList.remove("connected");
+    this.els.connBtn.textContent = "连接";
+    this.els.connBtn.disabled = false;
+    this.els.nickInput.disabled = true;
+    this.battle = null;
+
     if (this.mode === "waiting") {
-      this.cancelWaiting();
-      alert("与服务器断开连接，已自动取消等待。");
+      this.setMode("solo");
+      this.switchTab("solo");
+      this.enterLobby();
+      this.ensureSoloGame();
     } else if (this.mode === "playing") {
-      this.battle.stopTimer();
       this.locked = true;
       this.els.overlayTitle.textContent = "连接断开!";
       this.els.overlayScores.hidden = true;
@@ -468,6 +556,7 @@
       this.els.overlayBattleActions.classList.remove("hidden");
       this.els.overlay.hidden = false;
     }
+    this.setMode("solo");
   };
 
   App.prototype.exitBattle = function () {
