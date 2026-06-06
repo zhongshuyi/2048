@@ -2,6 +2,7 @@
 import json
 import asyncio
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,15 +20,30 @@ else:
     from game.room_manager import RoomManager
     manager = RoomManager()
 
-app = FastAPI(title="2048 Battle Server")
+ws_meta = {}
+
+# ---- Lifespan (background tasks) ----
+
+@asynccontextmanager
+async def lifespan(app):
+    task = asyncio.create_task(_periodic_cleanup())
+    yield
+    task.cancel()
+
+async def _periodic_cleanup():
+    """Background task: clean up stale finished games every 5 minutes."""
+    while True:
+        await asyncio.sleep(300)
+        if hasattr(manager, "cleanup_finished_games"):
+            await manager.cleanup_finished_games()
+
+app = FastAPI(title="2048 Battle Server", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
-)
-
-ws_meta = {}  # WebSocket -> {"nickname": str, "in_game": bool}
+)  # WebSocket -> {"nickname": str, "in_game": bool}
 
 
 @app.post("/api/rooms")
@@ -431,12 +447,7 @@ async def _periodic_cleanup():
     while True:
         await asyncio.sleep(300)
         if hasattr(manager, "cleanup_finished_games"):
-            manager.cleanup_finished_games()
-
-
-@app.on_event("startup")
-async def _start_cleanup():
-    asyncio.create_task(_periodic_cleanup())
+            await manager.cleanup_finished_games()
 
 
 if __name__ == "__main__":
