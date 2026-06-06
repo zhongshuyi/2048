@@ -1,9 +1,10 @@
 """2048 Battle Mode — FastAPI server with WebSocket."""
 import json
 import asyncio
+
+from game.room_manager import RoomManager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from game.room_manager import RoomManager
 
 app = FastAPI(title="2048 Battle Server")
 app.add_middleware(
