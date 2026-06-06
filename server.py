@@ -223,10 +223,11 @@ async def handle_move(ws, data):
 
     # Check win: board dead
     if claimed.get("gameOver"):
+        print(f"[DEAD] player{player_num} board dead, mode={game['mode']}")
         if game["mode"] == "race":
             await _end_game(game, winner=(1 if player_num == 2 else 2), reason="dead")
         else:
-            player_dead(game, player_num, opponent_key)
+            await player_dead(game, player_num, opponent_key)
 
 
 async def handle_rematch(ws):
@@ -296,6 +297,7 @@ async def player_dead(game, player_num, opponent_key):
     game[f"player{player_num}"]["dead"] = True
     opp_num = 1 if player_num == 2 else 2
     opponent_ws = game[opponent_key]["ws"]
+    print(f"[DEAD] player{player_num} dead=True, player1.dead={game['player1'].get('dead')}, player2.dead={game['player2'].get('dead')}")
     # Notify opponent that this player is dead
     try:
         await opponent_ws.send_json({
@@ -310,6 +312,7 @@ async def player_dead(game, player_num, opponent_key):
         return
     # Timed mode: check if both dead
     if game["player1"].get("dead") and game["player2"].get("dead"):
+        print(f"[END] both dead, ending game {game['id']}")
         await _end_game(game, reason="dead")
 
 
@@ -371,6 +374,7 @@ async def _end_game(game, winner=0, reason="time"):
     """End game and notify both players. winner: 1=player1, 2=player2, 0=draw."""
     if game.get("finished"):
         return
+    print(f"[END] game={game['id']} winner={winner} reason={reason} p1={game['player1']['score']} p2={game['player2']['score']}", flush=True)
     game["finished"] = True
     manager.delete_game(game["id"])
 
