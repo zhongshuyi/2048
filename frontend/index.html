@@ -11,6 +11,9 @@
     <link rel="stylesheet" href="./assets/main.css" />
   </head>
   <body>
+    <div id="demoBar" style="display:none;background:#1a1a2e;color:#e0c28c;text-align:center;padding:6px 12px;font-size:13px;border-bottom:1px solid #e0c28c33;">
+      Demo — 单人模式可玩，对战需 <a href="https://github.com/zhongshuyi/2048" style="color:#f9f6f2;font-weight:700;">本地部署</a>
+    </div>
     <main class="page">
       <header class="header">
         <div class="title-area">
@@ -200,5 +203,10 @@
     <script src="./js/input.js"></script>
     <script src="./js/battle-client.js"></script>
     <script src="./js/app.js"></script>
+    <script>
+      if (/github\.io/.test(location.hostname)) {
+        document.getElementById("demoBar").style.display = "block";
+      }
+    </script>
   </body>
 </html>
