@@ -5,13 +5,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Run
 
 ```
-# Frontend (static HTTP server)
-cd frontend && python3 -m http.server 8080
-# → open http://localhost:8080
-
-# Backend (WebSocket battle server)
+# Unified server (frontend + backend, single port)
 cd backend && python server.py
-# → ws://localhost:8081/ws/play
+# → http://localhost:8081 (frontend + WebSocket)
 
 # Desktop (Tauri build)
 cd desktop && npx tauri build
