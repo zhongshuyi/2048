@@ -1,6 +1,7 @@
 (function () {
   const BEST_KEY = "solo-2048-best";
   var NICK_KEY = "solo-2048-nickname";
+  var SERVER_KEY = "solo-2048-server";
 
   function normalizeNumber(v) {
     if (typeof v !== "number") {
@@ -55,12 +56,29 @@
     return adj + noun;
   }
 
+  function getServerUrl() {
+    try {
+      var raw = localStorage.getItem(SERVER_KEY);
+      return (raw && raw.trim()) || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function setServerUrl(url) {
+    try {
+      localStorage.setItem(SERVER_KEY, String(url).trim());
+    } catch (e) {}
+  }
+
   window.Storage2048 = {
     getBestScore,
     setBestScore,
     getNickname: getNickname,
     setNickname: setNickname,
     randomNickname: randomNickname,
+    getServerUrl: getServerUrl,
+    setServerUrl: setServerUrl,
   };
 })();
 

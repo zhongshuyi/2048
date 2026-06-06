@@ -84,6 +84,12 @@
     });
     this.renderer.init();
 
+    // Restore saved server URL
+    if (window.Storage2048) {
+      var savedUrl = window.Storage2048.getServerUrl();
+      if (savedUrl) this.els.connInput.value = savedUrl;
+    }
+
     this.startSolo();
     this.bindActions();
     this.bindConnection();
@@ -215,6 +221,7 @@
 
   App.prototype._onConnected = function () {
     this.wsConnected = true;
+    if (window.Storage2048) window.Storage2048.setServerUrl(this.els.connInput.value.trim());
     this.els.connDot.classList.add("connected");
     this.els.connBtn.textContent = "断开";
     this.els.connBtn.disabled = false;
