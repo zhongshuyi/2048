@@ -6,7 +6,7 @@
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:8080",
-    "beforeBuildCommand": "node scripts/build-dist.mjs"
+    "beforeBuildCommand": "node D:/devcode/main/2048/desktop/scripts/build-dist.mjs"
   },
   "app": {
     "windows": [

@@ -5,7 +5,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "fs";
 import { resolve } from "path";
 
 const ROOT = resolve(import.meta.dirname, "..");
-const SVG = readFileSync(resolve(ROOT, "assets", "favicon.svg"));
+const SVG = readFileSync(resolve(ROOT, "..", "frontend", "assets", "favicon.svg"));
 const ICONS = resolve(ROOT, "src-tauri", "icons");
 mkdirSync(ICONS, { recursive: true });
 

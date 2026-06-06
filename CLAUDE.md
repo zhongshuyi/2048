@@ -5,8 +5,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Run
 
 ```
-python3 -m http.server 8080
+# Frontend (static HTTP server)
+cd frontend && python3 -m http.server 8080
 # → open http://localhost:8080
+
+# Backend (WebSocket battle server)
+cd backend && python server.py
+# → ws://localhost:8081/ws/play
+
+# Desktop (Tauri build)
+cd desktop && npx tauri build
 ```
 
 `file://` protocol causes WebGL context lost warnings (browser sandbox). HTTP server required for clean runtime.
@@ -14,14 +22,19 @@ python3 -m http.server 8080
 ## Architecture
 
 ```
-index.html          Entry point. Google Fonts (Rubik) + CSS + 5 JS files.
-js/game-engine.js   Pure logic. Immutable state. createGame(size) → {state, events}. move(state, dir) → {state, moved, scoreGained, gameOver, events}.
-js/ui-renderer.js   PixiJS v7.4.2 legacy. Canvas rendering, cubic-bezier animations, score counting. ~430 lines.
-js/app.js           Orchestrator. Wires engine → renderer → input. Handles animation lock + pendingDirection queue.
-js/input.js         Keyboard (Arrow keys), touch swipe, mouse drag. Threshold 14px.
-js/storage.js       localStorage key "solo-2048-best" for best score.
-assets/main.css     Page layout, CSS variables for animation timings, board shadow.
-vendor/pixi.min.js  PixiJS v7.4.2 legacy. sourceMappingURL comment removed to silence console warning.
+frontend/index.html          Entry point. Google Fonts (Rubik) + CSS + 5 JS files.
+frontend/js/game-engine.js   Pure logic. Immutable state.
+frontend/js/ui-renderer.js   PixiJS v7.4.2 legacy. Canvas rendering, spring physics animations.
+frontend/js/app.js           Orchestrator. Wires engine → renderer → input.
+frontend/js/input.js         Keyboard (Arrow/WASD), touch swipe, mouse drag.
+frontend/js/storage.js       localStorage for best score, nickname, server URL.
+frontend/assets/main.css     Page layout, CSS variables, responsive breakpoints.
+frontend/vendor/pixi.min.js  PixiJS v7.4.2 legacy.
+backend/server.py            FastAPI + WebSocket battle server.
+backend/game/engine.py       Python port of game engine logic.
+backend/game/room_manager.py In-memory room/matchmaking state.
+desktop/src-tauri/           Tauri v2 project (Rust + WebView2).
+desktop/scripts/             Build tooling (obfuscation, icon gen).
 ```
 
 ## Key details

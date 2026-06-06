@@ -6,16 +6,17 @@ import { resolve, dirname, basename } from "path";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const DIST = resolve(ROOT, "dist");
-const JS_DIR = resolve(ROOT, "js");
+const FRONTEND = resolve(ROOT, "..", "frontend");
+const JS_DIR = resolve(FRONTEND, "js");
 
 // Clean dist
 if (existsSync(DIST)) rmSync(DIST, { recursive: true });
 mkdirSync(DIST, { recursive: true });
 
 // Copy non-JS assets
-cpSync(resolve(ROOT, "index.html"), resolve(DIST, "index.html"));
-cpSync(resolve(ROOT, "assets"), resolve(DIST, "assets"), { recursive: true });
-cpSync(resolve(ROOT, "vendor"), resolve(DIST, "vendor"), { recursive: true });
+cpSync(resolve(FRONTEND, "index.html"), resolve(DIST, "index.html"));
+cpSync(resolve(FRONTEND, "assets"), resolve(DIST, "assets"), { recursive: true });
+cpSync(resolve(FRONTEND, "vendor"), resolve(DIST, "vendor"), { recursive: true });
 
 // Obfuscate and copy JS files
 mkdirSync(resolve(DIST, "js"), { recursive: true });
