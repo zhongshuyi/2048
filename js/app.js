@@ -106,7 +106,8 @@
     this.els.board.style.opacity = show ? "" : "0";
     this.els.board.style.pointerEvents = show ? "" : "none";
     this.els.board.style.overflow = show ? "" : "hidden";
-    this.els.statusText.style.display = show ? "" : "none";
+    this.els.statusText.style.opacity = show ? "" : "0";
+    this.els.statusText.style.height = show ? "" : "0";
   };
 
   App.prototype._setHeaderVisible = function (showScores, showNewGame) {
@@ -149,20 +150,19 @@
     // Waiting panel: only during waiting
     this.els.panelWaiting.classList.toggle("hidden", !waiting);
 
-    // Grid selector: only in solo mode on solo tab, requires connection
-    var showGrid = this.wsConnected && solo && this.tab === "solo";
-    this.els.gridSeg.style.display = showGrid ? "" : "none";
+    // Grid selector: only in solo mode on solo tab
+    this.els.gridSeg.style.display = (solo && this.tab === "solo") ? "" : "none";
 
     // Battle header + opponent: only during playing
     this.els.battleHeader.classList.toggle("hidden", !playing);
     this.els.oppBoardWrap.classList.toggle("hidden", !playing);
 
-    // Board visibility — requires connection in solo tab
-    var showBoard = this.wsConnected && ((solo && this.tab === "solo") || playing);
+    // Board visibility — solo tab always OK, playing needs connection
+    var showBoard = (solo && this.tab === "solo") || playing;
     this._setBoardVisible(showBoard);
 
-    // Header visibility — requires connection
-    var inSoloTab = this.wsConnected && solo && this.tab === "solo";
+    // Header visibility
+    var inSoloTab = solo && this.tab === "solo";
     this._setHeaderVisible(inSoloTab, inSoloTab);
   };
 
@@ -225,8 +225,6 @@
     this.els.connDot.classList.add("connected");
     this.els.connBtn.textContent = "断开";
     this.els.connBtn.disabled = false;
-    this.els.nickInput.disabled = false;
-    this.els.nickBar.style.display = "";
     this.setMode("solo");
   };
 
@@ -243,8 +241,6 @@
     this.els.connDot.classList.remove("connected");
     this.els.connBtn.textContent = "连接";
     this.els.connBtn.disabled = false;
-    this.els.nickInput.disabled = true;
-    this.els.nickBar.style.display = "none";
     if (this.mode !== "solo") {
       this.setMode("solo");
       this.switchTab("solo");
@@ -550,8 +546,6 @@
     this.els.connDot.classList.remove("connected");
     this.els.connBtn.textContent = "连接";
     this.els.connBtn.disabled = false;
-    this.els.nickInput.disabled = true;
-    this.els.nickBar.style.display = "none";
     this.battle = null;
 
     if (this.mode === "waiting") {
