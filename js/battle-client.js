@@ -208,6 +208,9 @@
       case "opponent_move":
         this.app.onOpponentMove(msg);
         break;
+      case "opponent_dead":
+        this.app.onOpponentDead(msg);
+        break;
       case "game_over":
         this.app.onGameOver(msg);
         break;

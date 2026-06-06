@@ -524,6 +524,10 @@
     this.bindInput();
   };
 
+  App.prototype.onOpponentDead = function (msg) {
+    this.els.statusText.textContent = "对手棋盘已满，无法移动！";
+  };
+
   App.prototype.onOpponentMove = function (msg) {
     if (this.battle) {
       this.battle.renderOpponentMini(msg.grid, this.gridSize);
