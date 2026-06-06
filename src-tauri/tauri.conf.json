@@ -14,8 +14,6 @@
         "title": "2048",
         "width": 920,
         "height": 820,
-        "minWidth": 520,
-        "minHeight": 600,
         "resizable": true,
         "fullscreen": false
       }
