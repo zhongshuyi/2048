@@ -20,6 +20,8 @@
     this.oppNameEl = null;
     this.oppScoreEl = null;
     this.oppBoardContainer = null;
+    this._oppCells = null;
+    this._oppLastSize = 0;
     this.timerInterval = null;
     this.timerEndAt = 0;
     this.timerRunning = false;
@@ -28,6 +30,7 @@
   BattleClient.prototype.init = function (app) {
     this.app = app;
     this.renderer = app.renderer;
+    this._tileColors = (window.Engine2048 && window.Engine2048.TILE_COLORS) || {};
 
     this.nickname = this.loadNickname();
     this.cacheDom();
@@ -284,41 +287,56 @@
   BattleClient.prototype.renderOpponentMini = function (grid, size) {
     if (!this.oppBoardContainer) return;
     var container = this.oppBoardContainer;
-    container.innerHTML = "";
-    var cellGap = Math.max(1, Math.floor(110 / (size * 5)));
-    var cellSize = Math.floor((110 - cellGap * (size + 1)) / size);
 
-    container.style.display = "grid";
-    container.style.gridTemplateColumns = "repeat(" + size + ", " + cellSize + "px)";
-    container.style.gridTemplateRows = "repeat(" + size + ", " + cellSize + "px)";
-    container.style.gap = cellGap + "px";
-    container.style.padding = cellGap + "px";
+    // Rebuild grid only if size changed
+    if (size !== this._oppLastSize) {
+      this._oppLastSize = size;
+      container.innerHTML = "";
+      this._oppCells = [];
+      var cellGap = Math.max(1, Math.floor(110 / (size * 5)));
+      var cellSize = Math.floor((110 - cellGap * (size + 1)) / size);
 
-    for (var r = 0; r < size; r++) {
-      for (var c = 0; c < size; c++) {
-        var cell = document.createElement("div");
-        var value = grid[r][c] || 0;
-        if (value > 0) {
-          cell.style.background = this.tileColor(value);
-          cell.textContent = this.tileText(value);
-          cell.style.color = value >= 8 ? "#f9f6f2" : "#776e65";
+      container.style.display = "grid";
+      container.style.gridTemplateColumns = "repeat(" + size + ", " + cellSize + "px)";
+      container.style.gridTemplateRows = "repeat(" + size + ", " + cellSize + "px)";
+      container.style.gap = cellGap + "px";
+      container.style.padding = cellGap + "px";
+
+      for (var r = 0; r < size; r++) {
+        for (var c = 0; c < size; c++) {
+          var cell = document.createElement("div");
+          cell.style.borderRadius = Math.max(1, cellSize * 0.15) + "px";
+          cell.style.display = "flex";
+          cell.style.alignItems = "center";
+          cell.style.justifyContent = "center";
           cell.style.fontWeight = "700";
           cell.style.fontSize = Math.max(9, cellSize * 0.5) + "px";
-        } else {
-          cell.style.background = "rgba(238,228,218,0.35)";
+          container.appendChild(cell);
+          this._oppCells.push(cell);
         }
-        cell.style.borderRadius = Math.max(1, cellSize * 0.15) + "px";
-        cell.style.display = "flex";
-        cell.style.alignItems = "center";
-        cell.style.justifyContent = "center";
-        container.appendChild(cell);
+      }
+    }
+
+    // Update cell contents only
+    var cells = this._oppCells;
+    for (var i = 0; i < cells.length; i++) {
+      var r = Math.floor(i / size);
+      var c = i % size;
+      var value = grid[r][c] || 0;
+      var cell = cells[i];
+      if (value > 0) {
+        cell.style.background = this.tileColor(value);
+        cell.textContent = this.tileText(value);
+        cell.style.color = value >= 8 ? "#f9f6f2" : "#776e65";
+      } else {
+        cell.style.background = "rgba(238,228,218,0.35)";
+        cell.textContent = "";
       }
     }
   };
 
   BattleClient.prototype.tileColor = function (value) {
-    var map = (window.Engine2048 && window.Engine2048.TILE_COLORS) || {};
-    return map[value] || (value <= 4096 ? "#3c3a32" : "#3c3a32");
+    return this._tileColors[value] || (value <= 4096 ? "#3c3a32" : "#3c3a32");
   };
 
   BattleClient.prototype.tileText = function (value) {

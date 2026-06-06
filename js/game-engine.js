@@ -1,5 +1,6 @@
 (function () {
   const DEFAULT_SIZE = 4;
+  const DIRECTIONS = new Set(["left", "right", "up", "down"]);
 
   const TILE_STYLES = {
     2:    { bg: 0xeee4da, fg: 0x776e65, size: 44 },
@@ -175,11 +176,16 @@
       if (id !== 0) targetPos.set(id, pos);
     }
 
+    var mergeByConsumed = new Map();
+    for (var mi = 0; mi < merges.length; mi++) {
+      mergeByConsumed.set(merges[mi].fromIds[1], merges[mi]);
+    }
+
     for (const idStr of ids) {
       const fromPos = originalPos.get(idStr);
       let toPos = targetPos.get(idStr);
 
-      const merge = merges.find((m) => m.fromIds[1] === idStr);
+      const merge = mergeByConsumed.get(idStr);
       if (merge) {
         toPos = merge.toPos;
       }
@@ -257,7 +263,7 @@
   }
 
   function move(state, direction) {
-    if (!["left", "right", "up", "down"].includes(direction)) {
+    if (!DIRECTIONS.has(direction)) {
       return { state: copyState(state), moved: false, scoreGained: 0, reached2048: state.reached2048, gameOver: false, events: { moves: [], merges: [], spawns: [], removes: [] } };
     }
 

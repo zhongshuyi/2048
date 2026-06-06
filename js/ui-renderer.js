@@ -542,7 +542,10 @@
     var popMs = parseCssMsVar("--pop-ms", 130);
     var appearMs = parseCssMsVar("--appear-ms", 100);
 
-    const toRemove = new Set(events.removes.map(function (r) { return r.id; }));
+    var toRemove = new Set();
+    for (var ri2 = 0; ri2 < events.removes.length; ri2++) {
+      toRemove.add(events.removes[ri2].id);
+    }
 
     // Hide merge-target tiles during move
     for (var mi = 0; mi < events.merges.length; mi++) {

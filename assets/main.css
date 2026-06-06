@@ -492,48 +492,6 @@ body {
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 
-/* ── Room code ── */
-
-.room-code {
-  text-align: center;
-  padding: 8px 16px;
-  background: #f9f6f2;
-  border-radius: 6px;
-  font-size: 13px;
-  color: var(--panel-muted);
-}
-
-.room-code strong {
-  font-size: 22px;
-  letter-spacing: 3px;
-  color: var(--panel-text);
-}
-
-.room-code-hint {
-  display: block;
-  margin-top: 2px;
-  font-size: 11px;
-}
-
-/* ── Match status ── */
-
-.match-status {
-  text-align: center;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--panel-muted);
-  animation: match-pulse 1.2s ease-in-out infinite;
-}
-
-.match-status.hidden {
-  display: none;
-}
-
-@keyframes match-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
 /* ── Battle header ── */
 
 .battle-header {
@@ -636,39 +594,6 @@ body {
 }
 
 .join-input-lg:focus {
-  border-color: var(--board-bg);
-}
-
-/* ── Join bar (legacy) ── */
-
-.join-bar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.join-bar.hidden {
-  display: none;
-}
-
-.join-input {
-  width: 120px;
-  padding: 6px 10px;
-  font-family: inherit;
-  font-weight: 700;
-  font-size: 16px;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  text-align: center;
-  border: 2px solid var(--seg-bg);
-  border-radius: 6px;
-  background: #fff;
-  color: var(--panel-text);
-  outline: none;
-}
-
-.join-input:focus {
   border-color: var(--board-bg);
 }
 

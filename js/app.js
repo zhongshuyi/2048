@@ -106,6 +106,21 @@
 
   // ── Mode controller ──
 
+  App.prototype._setBoardVisible = function (show) {
+    this.els.board.style.maxHeight = show ? "600px" : "0";
+    this.els.board.style.opacity = show ? "" : "0";
+    this.els.board.style.pointerEvents = show ? "" : "none";
+    this.els.board.style.overflow = show ? "" : "hidden";
+    this.els.statusText.style.opacity = show ? "" : "0";
+    this.els.statusText.style.height = show ? "" : "0";
+  };
+
+  App.prototype._setHeaderVisible = function (showScores, showNewGame) {
+    var scoresEl = document.getElementById("scoresPanel");
+    if (scoresEl) scoresEl.style.visibility = showScores ? "" : "hidden";
+    this.els.newGameBtn.style.visibility = showNewGame ? "" : "hidden";
+  };
+
   App.prototype.setMode = function (m) {
     this.mode = m;
     var locked = m !== "solo";
@@ -122,8 +137,6 @@
     this.els.newGameBtn.classList.toggle("disabled", locked);
     if (locked) this.els.newGameBtn.setAttribute("disabled", "");
     else this.els.newGameBtn.removeAttribute("disabled");
-    var showNewGame = solo && this.tab === "solo";
-    this.els.newGameBtn.style.visibility = showNewGame ? "" : "hidden";
 
     // Config panels: only in solo mode, matching tab
     this.els.panelSolo.classList.toggle("hidden", !solo || this.tab !== "solo");
@@ -141,19 +154,13 @@
     this.els.battleHeader.classList.toggle("hidden", !playing);
     this.els.oppBoardWrap.classList.toggle("hidden", !playing);
 
-    // Board: show only in solo (solo tab) or playing — maxHeight collapse + opacity fade
+    // Board visibility
     var showBoard = (solo && this.tab === "solo") || playing;
-    this.els.board.style.maxHeight = showBoard ? "600px" : "0";
-    this.els.board.style.opacity = showBoard ? "" : "0";
-    this.els.board.style.pointerEvents = showBoard ? "" : "none";
-    this.els.board.style.overflow = showBoard ? "" : "hidden";
-    this.els.statusText.style.opacity = showBoard ? "" : "0";
-    this.els.statusText.style.height = showBoard ? "" : "0";
+    this._setBoardVisible(showBoard);
 
-    // Scores: only in solo tab of solo mode
-    var showScores = solo && this.tab === "solo";
-    var scoresEl = document.getElementById("scoresPanel");
-    if (scoresEl) scoresEl.style.visibility = showScores ? "" : "hidden";
+    // Header visibility
+    var inSoloTab = solo && this.tab === "solo";
+    this._setHeaderVisible(inSoloTab, inSoloTab);
   };
 
   // ── Nickname ──
@@ -515,14 +522,9 @@
   // ── Util ──
 
   App.prototype.findMaxId = function (tiles) {
-    var max = 0;
-    for (var key in tiles) {
-      if (tiles.hasOwnProperty(key)) {
-        var n = parseInt(key, 10);
-        if (n > max) max = n;
-      }
-    }
-    return max;
+    var keys = Object.keys(tiles);
+    if (keys.length === 0) return 0;
+    return Math.max.apply(null, keys.map(Number));
   };
 
   // ── Solo ──
