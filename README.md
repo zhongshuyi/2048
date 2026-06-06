@@ -101,7 +101,7 @@ cd backend && pip install -r requirements.txt
 python server.py
 ```
 
-浏览器打开 **http://localhost:8081**，打开两个标签页即可测试对战。
+浏览器打开 http://localhost:8081，打开两个标签页即可测试对战。
 
 ---
 
