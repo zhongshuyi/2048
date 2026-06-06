@@ -17,6 +17,7 @@
 [![Tauri](https://img.shields.io/badge/Tauri-v2-FFC131?style=flat-square&logo=tauri&logoColor=black)](https://v2.tauri.app/)
 [![Redis](https://img.shields.io/badge/Redis-optional-DC382D?style=flat-square&logo=redis&logoColor=white)](https://redis.io/)
 [![Docker](https://img.shields.io/badge/Docker-supported-2496ED?style=flat-square&logo=docker&logoColor=white)](https://www.docker.com/)
+[![Demo](https://img.shields.io/badge/Demo-Live-success?style=flat-square&logo=github)](https://zhongshuyi.github.io/2048/)
 
 </div>
 
@@ -33,6 +34,7 @@
 - [对战协议](#对战协议)
 - [项目结构](#项目结构)
 - [桌面构建](#桌面构建)
+- [贡献指南](#贡献指南)
 - [许可证](#许可证)
 
 ---
@@ -282,6 +284,15 @@ npx tauri build           # 打包 → NSIS installer (.exe)
 输出目录：`desktop/src-tauri/target/release/bundle/nsis/`
 
 ---
+
+---
+
+## 贡献指南
+
+欢迎贡献代码和反馈问题。详情请参阅 [CONTRIBUTING.md](./CONTRIBUTING.md)。
+
+[![Issues](https://img.shields.io/github/issues/zhongshuyi/2048?style=flat-square&color=green)](https://github.com/zhongshuyi/2048/issues)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](./CONTRIBUTING.md)
 
 ## 许可证
 
