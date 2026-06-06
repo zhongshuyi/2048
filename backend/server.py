@@ -1,21 +1,22 @@
-"""2048 Battle Mode — FastAPI server with WebSocket."""
+"""2048 Battle Mode — FastAPI server with WebSocket + static files."""
 import json
 import asyncio
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
+import config
 
 DIRECTIONS = frozenset(("left", "right", "up", "down"))
 
 # Select backend: Redis for multi-worker, in-memory for single process
-REDIS_URL = os.environ.get("REDIS_URL", "")
-MAX_GAMES = int(os.environ.get("MAX_GAMES", "0"))  # 0 = unlimited
-
-if REDIS_URL:
+if config.REDIS_ENABLED:
     from game.room_manager_redis import RedisRoomManager
-    manager = RedisRoomManager(REDIS_URL)
+    manager = RedisRoomManager(config.REDIS_URL)
 else:
     from game.room_manager import RoomManager
     manager = RoomManager()
@@ -33,7 +34,7 @@ async def lifespan(app):
 async def _periodic_cleanup():
     """Background task: clean up stale finished games every 5 minutes."""
     while True:
-        await asyncio.sleep(300)
+        await asyncio.sleep(config.CLEANUP_INTERVAL)
         if hasattr(manager, "cleanup_finished_games"):
             await manager.cleanup_finished_games()
 
@@ -43,7 +44,7 @@ app.add_middleware(
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
-)  # WebSocket -> {"nickname": str, "in_game": bool}
+)
 
 
 @app.post("/api/rooms")
@@ -112,7 +113,7 @@ async def websocket_play(ws: WebSocket):
 # --- Message handlers ---
 
 async def handle_create_room(ws, data):
-    if MAX_GAMES and len(manager.games) >= MAX_GAMES:
+    if config.MAX_GAMES and len(manager.games) >= config.MAX_GAMES:
         await ws.send_json({"type": "error", "message": "Server full, try again later"})
         return
     mode = data.get("mode", "timed")
@@ -163,7 +164,7 @@ async def handle_join_room(ws, data):
 
 
 async def handle_join_match(ws, data):
-    if MAX_GAMES and len(manager.games) >= MAX_GAMES:
+    if config.MAX_GAMES and len(manager.games) >= config.MAX_GAMES:
         await ws.send_json({"type": "error", "message": "Server full, try again later"})
         return
     mode = data.get("mode", "timed")
@@ -450,12 +451,30 @@ async def _periodic_cleanup():
             await manager.cleanup_finished_games()
 
 
+# ---- Static file serving (SPA fallback) ----
+
+_static_path = Path(config.STATIC_DIR).resolve()
+if _static_path.exists():
+    from fastapi.responses import FileResponse
+
+    @app.get("/{path:path}")
+    async def serve_spa(path: str):
+        """Serve static files, fall back to index.html for SPA routing."""
+        file_path = _static_path / path
+        if path and file_path.exists() and file_path.is_file():
+            return FileResponse(file_path)
+        return FileResponse(_static_path / "index.html")
+
+    print(f"[static] serving {_static_path}")
+
+
 if __name__ == "__main__":
+    config._print_config()
     import uvicorn
     uvicorn.run(
         "server:app",
-        host="0.0.0.0",
-        port=8081,
+        host=config.HOST,
+        port=config.PORT,
         reload=False,
         limit_max_requests=10000,
         backlog=2048,

@@ -4,3 +4,4 @@ __pycache__/
 desktop/node_modules/
 desktop/dist/
 desktop/src-tauri/target/
+backend/static/
