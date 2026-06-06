@@ -174,7 +174,8 @@
   };
 
   App.prototype.connectServer = function () {
-    var url = this.els.connInput.value.trim() || this.els.connInput.placeholder;
+    var url = this.els.connInput.value.trim();
+    if (!url) return;
     if (!window.BattleClient) return;
 
     // Clean up any pending check
