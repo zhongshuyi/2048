@@ -1,6 +1,11 @@
 (function () {
   var IS_MOBILE = /Mobi|Android/i.test(navigator.userAgent);
 
+  function getRenderResolution() {
+    var dpr = window.devicePixelRatio || 1;
+    return Math.max(1, dpr);
+  }
+
   function clampInt(n) {
     if (typeof n !== "number") return 0;
     if (!Number.isFinite(n)) return 0;
@@ -102,9 +107,105 @@
     this.cellSize = 0;
     this.boardSize = 0;
 
+    this._cssTimings = {
+      moveMs: 80,
+      popMs: 130,
+      appearMs: 100,
+    };
+
+    this._activeAnims = 0;
+    this._animTasks = [];
+    this._tickHandler = null;
+
     this.handleResize = null;
     this.handleOrientation = null;
   }
+
+  Renderer.prototype.renderNow = function renderNow() {
+    if (!this.app) return;
+    if (typeof this.app.render === "function") {
+      this.app.render();
+      return;
+    }
+    if (this.app.renderer && this.app.stage) {
+      this.app.renderer.render(this.app.stage);
+    }
+  };
+
+  Renderer.prototype._beginAnim = function _beginAnim() {
+    this._activeAnims++;
+    if (this.app && this.app.ticker && typeof this.app.ticker.start === "function") {
+      this.app.ticker.start();
+    }
+  };
+
+  Renderer.prototype._endAnim = function _endAnim() {
+    this._activeAnims = Math.max(0, this._activeAnims - 1);
+    if (this._activeAnims === 0 && this.app && this.app.ticker && typeof this.app.ticker.stop === "function") {
+      this.app.ticker.stop();
+      this.renderNow();
+    }
+  };
+
+  Renderer.prototype._runAnimFrame = function _runAnimFrame() {
+    if (!this._animTasks || this._animTasks.length === 0) return;
+
+    var now = performance.now();
+    for (var i = 0; i < this._animTasks.length;) {
+      var task = this._animTasks[i];
+      if (!task) {
+        this._animTasks.splice(i, 1);
+        continue;
+      }
+
+      if (task.type === "linear") {
+        var t = (now - task.start) / task.durationMs;
+        if (t >= 1) {
+          task.update(1);
+          this._animTasks.splice(i, 1);
+          this._endAnim();
+          task.resolve();
+          continue;
+        }
+        task.update(Math.max(0, Math.min(1, t)));
+        i++;
+        continue;
+      }
+
+      if (task.type === "spring") {
+        var elapsed = now - task.start;
+        var dt = (now - task.lastTime) / 1000;
+        task.lastTime = now;
+
+        var value = task.spring(dt);
+        task.update(value);
+
+        var target = task.target;
+        if (elapsed >= task.durationMs && Math.abs(value - target) < 0.03) {
+          task.update(target);
+          this._animTasks.splice(i, 1);
+          this._endAnim();
+          task.resolve();
+          continue;
+        }
+
+        if (elapsed >= task.hardDeadlineMs) {
+          task.update(target);
+          this._animTasks.splice(i, 1);
+          this._endAnim();
+          task.resolve();
+          continue;
+        }
+
+        i++;
+        continue;
+      }
+
+      this._animTasks.splice(i, 1);
+      this._endAnim();
+      if (task && typeof task.resolve === "function") task.resolve();
+    }
+  };
 
   Renderer.prototype.updateScore = function updateScore(score, best) {
     this.scoreEl.textContent = String(clampInt(score));
@@ -114,33 +215,18 @@
   Renderer.prototype.animateScore = function (fromVal, toVal, best) {
     var self = this;
     var duration = 200;
-    var start = performance.now();
-    var ticker = this.app.ticker;
-
-    var spring = createSpring({
-      from: 0, to: 1,
-      stiffness: 600, damping: 42,
-      velocity: 0,
-    });
-    var lastTime = start;
-
-    function tick() {
-      var now = performance.now();
-      var elapsed = now - start;
-      var dt = (now - lastTime) / 1000;
-      lastTime = now;
-
-      if (elapsed >= duration) {
-        self.scoreEl.textContent = String(clampInt(toVal));
-        ticker.remove(tick);
-        return;
-      }
-
-      var sv = spring(dt);
-      var current = Math.round(lerp(fromVal, toVal, Math.min(1, sv)));
+    this.springTween(duration, function (value) {
+      var v = Math.min(1, value);
+      var current = Math.round(lerp(fromVal, toVal, v));
       self.scoreEl.textContent = String(clampInt(current));
-    }
-    ticker.add(tick);
+    }, {
+      from: 0, to: 1,
+      stiffness: 600,
+      damping: 42,
+      velocity: 0,
+    }).then(function () {
+      self.scoreEl.textContent = String(clampInt(toVal));
+    });
     this.bestEl.textContent = String(clampInt(best));
   };
 
@@ -167,6 +253,13 @@
     this.cellSize = (this.boardSize - this.gap * (this.size + 1)) / this.size;
   };
 
+  Renderer.prototype.syncCssTimings = function syncCssTimings() {
+    var cs = getComputedStyle(document.documentElement);
+    this._cssTimings.moveMs = parseCssMsVar("--move-ms", 80, cs);
+    this._cssTimings.popMs = parseCssMsVar("--pop-ms", 130, cs);
+    this._cssTimings.appearMs = parseCssMsVar("--appear-ms", 100, cs);
+  };
+
   Renderer.prototype.setSize = function setSize(newSize) {
     this.size = newSize;
     this.measure();
@@ -189,14 +282,16 @@
       throw new Error("PIXI not found");
     }
     this.measure();
+    this.syncCssTimings();
 
     this.app = new window.PIXI.Application({
       width: this.boardSize,
       height: this.boardSize,
       backgroundAlpha: 0,
       antialias: true,
-      resolution: window.devicePixelRatio || 1,
-      preserveDrawingBuffer: true,
+      resolution: getRenderResolution(),
+      autoDensity: true,
+      powerPreference: "high-performance",
     });
 
     this.stageEl.innerHTML = "";
@@ -213,6 +308,15 @@
 
     this.layers = { root, board, cells, tiles };
     this.drawStatic();
+    if (this.app && this.app.ticker) {
+      this.app.ticker.stop();
+    }
+    if (this.app && this.app.ticker && !this._tickHandler) {
+      var selfTick = this;
+      this._tickHandler = function () { selfTick._runAnimFrame(); };
+      this.app.ticker.add(this._tickHandler);
+    }
+    this.renderNow();
 
     var selfResize = this;
     this.handleResize = function () {
@@ -237,6 +341,15 @@
       this.handleOrientation = null;
     }
     if (this.app) {
+      if (this.app.ticker && typeof this.app.ticker.stop === "function") {
+        this.app.ticker.stop();
+      }
+      if (this.app.ticker && this._tickHandler && typeof this.app.ticker.remove === "function") {
+        this.app.ticker.remove(this._tickHandler);
+      }
+      this._activeAnims = 0;
+      this._animTasks = [];
+      this._tickHandler = null;
       this.app.destroy(true, { children: true });
       this.app = null;
     }
@@ -245,8 +358,14 @@
   Renderer.prototype.resize = function resize() {
     if (!this.app) return;
     var before = this.boardSize;
+    var beforeRes = this.app.renderer ? this.app.renderer.resolution : 1;
     this.measure();
-    if (this.boardSize !== before) {
+    this.syncCssTimings();
+    var newRes = getRenderResolution();
+    if (this.app.renderer && typeof this.app.renderer.resolution !== "undefined") {
+      this.app.renderer.resolution = newRes;
+    }
+    if (this.boardSize !== before || newRes !== beforeRes) {
       this.app.renderer.resize(this.boardSize, this.boardSize);
     }
     this.drawStatic();
@@ -255,19 +374,27 @@
     while (!(tileEntry = tilesIter.next()).done) {
       var tile = tileEntry.value;
       this.redrawTile(tile);
+      if (tile.text && typeof tile.text.resolution !== "undefined") {
+        tile.text.resolution = newRes;
+        if (typeof tile.text.updateText === "function") tile.text.updateText(true);
+      }
       tile.container.pivot.set(this.cellSize / 2, this.cellSize / 2);
       var pos = this.cellToCenter(tile.r, tile.c);
       tile.container.position.set(pos.x, pos.y);
     }
+    this.renderNow();
   };
 
   Renderer.prototype.drawStatic = function drawStatic() {
     var bRadius = 10;
+    this.layers.board.cacheAsBitmap = false;
     this.layers.board.clear();
     this.layers.board.beginFill(0xbbada0, 1);
     this.layers.board.drawRoundedRect(0, 0, this.boardSize, this.boardSize, bRadius);
     this.layers.board.endFill();
+    this.layers.board.cacheAsBitmap = true;
 
+    this.layers.cells.cacheAsBitmap = false;
     this.layers.cells.clear();
     var cellRadius = Math.max(3, Math.min(10, Math.round(this.cellSize * 0.08)));
     var cellAlpha = 0.55;
@@ -280,6 +407,7 @@
         this.layers.cells.endFill();
       }
     }
+    this.layers.cells.cacheAsBitmap = true;
   };
 
   Renderer.prototype.clearTiles = function clearTiles() {
@@ -295,6 +423,9 @@
     const bg = new window.PIXI.Graphics();
     const text = new window.PIXI.Text("", {});
     text.anchor.set(0.5);
+    if (typeof text.resolution !== "undefined") {
+      text.resolution = getRenderResolution();
+    }
 
     container.addChild(bg);
     container.addChild(text);
@@ -354,23 +485,19 @@
   Renderer.prototype.tween = function tween(durationMs, update) {
     if (!this.app || durationMs <= 0) {
       update(1);
+      this.renderNow();
       return Promise.resolve();
     }
     var self = this;
     return new Promise(function (resolve) {
-      var start = performance.now();
-      var ticker = self.app.ticker;
-      var tick = function () {
-        var t = (performance.now() - start) / durationMs;
-        if (t >= 1) {
-          update(1);
-          ticker.remove(tick);
-          resolve();
-          return;
-        }
-        update(Math.max(0, Math.min(1, t)));
-      };
-      ticker.add(tick);
+      self._beginAnim();
+      self._animTasks.push({
+        type: "linear",
+        start: performance.now(),
+        durationMs: durationMs,
+        update: update,
+        resolve: resolve,
+      });
     });
   };
 
@@ -378,47 +505,34 @@
   Renderer.prototype.springTween = function springTween(durationMs, update, springConfig) {
     if (!this.app || durationMs <= 0) {
       update(1);
+      this.renderNow();
       return Promise.resolve();
     }
     var self = this;
     var cfg = springConfig || {};
+    var target = cfg.to != null ? cfg.to : 1;
     var spring = createSpring({
       from: cfg.from != null ? cfg.from : 0,
-      to: cfg.to != null ? cfg.to : 1,
+      to: target,
       velocity: cfg.velocity || 0,
       stiffness: cfg.stiffness || 180,
       damping: cfg.damping || 18,
     });
 
     return new Promise(function (resolve) {
+      self._beginAnim();
       var start = performance.now();
-      var lastTime = start;
-      var ticker = self.app.ticker;
-      var tick = function () {
-        var now = performance.now();
-        var elapsed = now - start;
-        var dt = (now - lastTime) / 1000;
-        lastTime = now;
-
-        var value = spring(dt);
-        update(value);
-
-        // Resolve as soon as minimum time has passed and spring is close enough
-        if (elapsed >= durationMs && Math.abs(value - (cfg.to != null ? cfg.to : 1)) < 0.03) {
-          update(cfg.to != null ? cfg.to : 1);
-          ticker.remove(tick);
-          resolve();
-          return;
-        }
-
-        // Hard deadline
-        if (elapsed >= durationMs * 1.5) {
-          update(cfg.to != null ? cfg.to : 1);
-          ticker.remove(tick);
-          resolve();
-        }
-      };
-      ticker.add(tick);
+      self._animTasks.push({
+        type: "spring",
+        start: start,
+        lastTime: start,
+        durationMs: durationMs,
+        hardDeadlineMs: durationMs * 1.5,
+        spring: spring,
+        update: update,
+        target: target,
+        resolve: resolve,
+      });
     });
   };
 
@@ -524,6 +638,7 @@
     }
     this.updateScore(state.score, best);
     this.updateStatus(state.reached2048);
+    this.renderNow();
   };
 
   Renderer.prototype.apply = function apply(state, best, events, scoreBefore, done) {
@@ -538,9 +653,9 @@
     this.updateStatus(state.reached2048);
 
     // Longer defaults for spring-driven animations
-    var moveMs = parseCssMsVar("--move-ms", 80);
-    var popMs = parseCssMsVar("--pop-ms", 130);
-    var appearMs = parseCssMsVar("--appear-ms", 100);
+    var moveMs = this._cssTimings.moveMs;
+    var popMs = this._cssTimings.popMs;
+    var appearMs = this._cssTimings.appearMs;
 
     var toRemove = new Set();
     for (var ri2 = 0; ri2 < events.removes.length; ri2++) {
@@ -605,6 +720,9 @@
         self.tweenAppear(newTile, appearMs);
       }
 
+      if (self._activeAnims === 0) {
+        self.renderNow();
+      }
       if (done) done();
     };
 

@@ -346,6 +346,16 @@ body {
 
 @media (max-width: 540px) {
   :root { --pad-x: 10px; }
+  :root {
+    --move-ms: 70ms;
+    --pop-ms: 120ms;
+    --appear-ms: 90ms;
+  }
+
+  .overlay {
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+  }
 
   .page {
     padding: 16px var(--pad-x) 24px;
