@@ -247,7 +247,7 @@
     };
 
     update();
-    this.timerInterval = setInterval(update, countDown ? 50 : 200);
+    this.timerInterval = setInterval(update, countDown ? 100 : 200);
   };
 
   BattleClient.prototype.stopTimer = function () {
@@ -296,6 +296,7 @@
       this._oppLastSize = size;
       container.innerHTML = "";
       this._oppCells = [];
+      this._oppPrevValues = [];
       var cellGap = Math.max(1, Math.floor(110 / (size * 5)));
       var cellSize = Math.floor((110 - cellGap * (size + 1)) / size);
 
@@ -316,26 +317,42 @@
           cell.style.fontSize = Math.max(9, cellSize * 0.5) + "px";
           container.appendChild(cell);
           this._oppCells.push(cell);
+          this._oppPrevValues.push(null);
         }
       }
     }
 
     // Update cell contents only
     var cells = this._oppCells;
-    for (var i = 0; i < cells.length; i++) {
-      var r = Math.floor(i / size);
-      var c = i % size;
-      var value = grid[r][c] || 0;
-      var cell = cells[i];
-      if (value > 0) {
-        cell.style.background = this.tileColor(value);
-        cell.textContent = this.tileText(value);
-        cell.style.color = value >= 8 ? "#f9f6f2" : "#776e65";
-      } else {
-        cell.style.background = "rgba(238,228,218,0.35)";
-        cell.textContent = "";
+    var prev = this._oppPrevValues || [];
+    var i = 0;
+    for (var r2 = 0; r2 < size; r2++) {
+      var row = grid[r2];
+      for (var c2 = 0; c2 < size; c2++) {
+        var value = (row && row[c2]) || 0;
+        if (prev[i] === value) {
+          i++;
+          continue;
+        }
+        prev[i] = value;
+        var cell = cells[i];
+        if (!cell) {
+          i++;
+          continue;
+        }
+        if (value > 0) {
+          cell.style.background = this.tileColor(value);
+          cell.textContent = this.tileText(value);
+          cell.style.color = value >= 8 ? "#f9f6f2" : "#776e65";
+        } else {
+          cell.style.background = "rgba(238,228,218,0.35)";
+          cell.textContent = "";
+          cell.style.color = "#776e65";
+        }
+        i++;
       }
     }
+    this._oppPrevValues = prev;
   };
 
   BattleClient.prototype.tileColor = function (value) {

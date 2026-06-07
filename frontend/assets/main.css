@@ -19,6 +19,9 @@
   --move-ms: 80ms;
   --pop-ms: 130ms;
   --appear-ms: 100ms;
+
+  --render-dpr-cap: 3;
+  --render-dpr-scale: 1;
 }
 
 *,
@@ -294,6 +297,7 @@ body {
   padding: 0;
   touch-action: none;
   user-select: none;
+  contain: layout paint;
   box-shadow:
     0 12px 32px rgba(0, 0, 0, 0.10),
     0 4px 8px rgba(0, 0, 0, 0.06),
@@ -350,6 +354,7 @@ body {
     --move-ms: 70ms;
     --pop-ms: 120ms;
     --appear-ms: 90ms;
+    --render-dpr-cap: 2;
   }
 
   .overlay {

@@ -1,11 +1,6 @@
 (function () {
   var IS_MOBILE = /Mobi|Android/i.test(navigator.userAgent);
 
-  function getRenderResolution() {
-    var dpr = window.devicePixelRatio || 1;
-    return Math.max(1, dpr);
-  }
-
   function clampInt(n) {
     if (typeof n !== "number") return 0;
     if (!Number.isFinite(n)) return 0;
@@ -61,6 +56,13 @@
     return Number.isFinite(v) ? v : fallback;
   }
 
+  function parseCssNumberVar(name, fallback, styles) {
+    styles = styles || getComputedStyle(document.documentElement);
+    const raw = styles.getPropertyValue(name).trim();
+    const v = parseFloat(raw);
+    return Number.isFinite(v) ? v : fallback;
+  }
+
   function parseCssMsVar(name, fallback, styles) {
     styles = styles || getComputedStyle(document.documentElement);
     const raw = styles.getPropertyValue(name).trim();
@@ -68,6 +70,18 @@
     if (!m) return fallback;
     const v = Number(m[1]);
     return Number.isFinite(v) ? Math.max(0, Math.floor(v)) : fallback;
+  }
+
+  function getRenderResolution(styles) {
+    styles = styles || getComputedStyle(document.documentElement);
+    var dpr = window.devicePixelRatio || 1;
+    var cap = parseCssNumberVar("--render-dpr-cap", IS_MOBILE ? 2 : 3, styles);
+    var scale = parseCssNumberVar("--render-dpr-scale", 1, styles);
+    var res = dpr * scale;
+    if (!Number.isFinite(res)) res = 1;
+    if (!Number.isFinite(cap) || cap <= 0) cap = IS_MOBILE ? 2 : 3;
+    res = Math.max(1, Math.min(cap, res));
+    return res;
   }
 
   var FALLBACK_STYLE_SUPER = { bg: 0x3c3a32, fg: 0xf9f6f2, size: 30 };
@@ -120,6 +134,13 @@
     this.handleResize = null;
     this.handleOrientation = null;
   }
+
+  Renderer.prototype._getRendererResolution = function _getRendererResolution() {
+    if (this.app && this.app.renderer && typeof this.app.renderer.resolution !== "undefined") {
+      return this.app.renderer.resolution || 1;
+    }
+    return 1;
+  };
 
   Renderer.prototype.renderNow = function renderNow() {
     if (!this.app) return;
@@ -243,8 +264,8 @@
     this.overlayEl.hidden = true;
   };
 
-  Renderer.prototype.measure = function measure() {
-    var cs = getComputedStyle(document.documentElement);
+  Renderer.prototype.measure = function measure(styles) {
+    var cs = styles || getComputedStyle(document.documentElement);
     const size = this.boardEl.clientWidth || parseCssPxVar("--board-size", 500, cs);
     this.boardSize = Math.floor(size);
     var cssGap = parseCssPxVar("--gap", 15, cs);
@@ -253,8 +274,8 @@
     this.cellSize = (this.boardSize - this.gap * (this.size + 1)) / this.size;
   };
 
-  Renderer.prototype.syncCssTimings = function syncCssTimings() {
-    var cs = getComputedStyle(document.documentElement);
+  Renderer.prototype.syncCssTimings = function syncCssTimings(styles) {
+    var cs = styles || getComputedStyle(document.documentElement);
     this._cssTimings.moveMs = parseCssMsVar("--move-ms", 80, cs);
     this._cssTimings.popMs = parseCssMsVar("--pop-ms", 130, cs);
     this._cssTimings.appearMs = parseCssMsVar("--appear-ms", 100, cs);
@@ -281,15 +302,22 @@
     if (!window.PIXI) {
       throw new Error("PIXI not found");
     }
-    this.measure();
-    this.syncCssTimings();
+    var cs = getComputedStyle(document.documentElement);
+    this.measure(cs);
+    this.syncCssTimings(cs);
+
+    if (window.PIXI && window.PIXI.settings && typeof window.PIXI.settings.ROUND_PIXELS !== "undefined") {
+      window.PIXI.settings.ROUND_PIXELS = true;
+    }
+
+    var renderResolution = getRenderResolution(cs);
 
     this.app = new window.PIXI.Application({
       width: this.boardSize,
       height: this.boardSize,
       backgroundAlpha: 0,
-      antialias: true,
-      resolution: getRenderResolution(),
+      antialias: renderResolution < 2,
+      resolution: renderResolution,
       autoDensity: true,
       powerPreference: "high-performance",
     });
@@ -359,9 +387,10 @@
     if (!this.app) return;
     var before = this.boardSize;
     var beforeRes = this.app.renderer ? this.app.renderer.resolution : 1;
-    this.measure();
-    this.syncCssTimings();
-    var newRes = getRenderResolution();
+    var cs = getComputedStyle(document.documentElement);
+    this.measure(cs);
+    this.syncCssTimings(cs);
+    var newRes = getRenderResolution(cs);
     if (this.app.renderer && typeof this.app.renderer.resolution !== "undefined") {
       this.app.renderer.resolution = newRes;
     }
@@ -398,15 +427,15 @@
     this.layers.cells.clear();
     var cellRadius = Math.max(3, Math.min(10, Math.round(this.cellSize * 0.08)));
     var cellAlpha = 0.55;
+    this.layers.cells.beginFill(0xcdc1b4, cellAlpha);
     for (var r = 0; r < this.size; r++) {
       for (var c = 0; c < this.size; c++) {
         var x = this.gap + c * (this.cellSize + this.gap);
         var y = this.gap + r * (this.cellSize + this.gap);
-        this.layers.cells.beginFill(0xcdc1b4, cellAlpha);
         this.layers.cells.drawRoundedRect(x, y, this.cellSize, this.cellSize, cellRadius);
-        this.layers.cells.endFill();
       }
     }
+    this.layers.cells.endFill();
     this.layers.cells.cacheAsBitmap = true;
   };
 
@@ -423,8 +452,10 @@
     const bg = new window.PIXI.Graphics();
     const text = new window.PIXI.Text("", {});
     text.anchor.set(0.5);
+    container.roundPixels = true;
+    text.roundPixels = true;
     if (typeof text.resolution !== "undefined") {
-      text.resolution = getRenderResolution();
+      text.resolution = this._getRendererResolution();
     }
 
     container.addChild(bg);
@@ -454,6 +485,7 @@
     var h = this.cellSize;
     var g = tile.bg;
 
+    g.cacheAsBitmap = false;
     g.clear();
 
     g.beginFill(s.bg, 1);
@@ -476,7 +508,23 @@
       _textStyleCache[cacheKey] = cached;
     }
     tile.text.style = cached;
-    tile.text.position.set(w / 2, h / 2);
+    tile.text.position.set(Math.round(w / 2), Math.round(h / 2));
+
+    var res = this._getRendererResolution();
+    var needsUpdate = false;
+    if (typeof tile.text.resolution !== "undefined" && tile.text.resolution !== res) {
+      tile.text.resolution = res;
+      needsUpdate = true;
+    }
+    if (tile._textCacheKey !== cacheKey) {
+      tile._textCacheKey = cacheKey;
+      needsUpdate = true;
+    }
+    if (needsUpdate && typeof tile.text.updateText === "function") {
+      tile.text.updateText(true);
+    }
+
+    g.cacheAsBitmap = true;
   };
 
   // ======== Tween engine ========
