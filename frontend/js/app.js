@@ -550,8 +550,13 @@
 
   App.prototype.onOpponentMove = function (msg) {
     if (this.battle) {
-      this.battle.renderOpponentMini(msg.grid, this.gridSize);
+      // Update score first (always safe), then grid (may fail gracefully)
       this.battle.renderOpponentScore(msg.score);
+      try {
+        this.battle.renderOpponentMini(msg.grid, this.gridSize);
+      } catch (e) {
+        // Mini-grid render failed, but score was updated
+      }
     }
   };
 
