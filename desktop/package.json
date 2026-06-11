@@ -8,19 +8,28 @@
   },
   "scripts": {
     "build:dist": "node scripts/build-dist.mjs",
+    "build:static": "node scripts/build-bundle.mjs",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
     "url": "git@github.com:zhongshuyi/2048.git"
   },
-  "keywords": ["2048", "game", "multiplayer", "tauri", "pixijs"],
+  "keywords": [
+    "2048",
+    "game",
+    "multiplayer",
+    "tauri",
+    "pixijs"
+  ],
   "author": "zhongshuyi",
   "license": "MIT",
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.2",
+    "esbuild": "^0.28.0",
     "javascript-obfuscator": "^5.4.3",
     "sharp": "^0.34.5",
-    "to-ico": "^1.1.5"
+    "to-ico": "^1.1.5",
+    "vite": "^8.0.16"
   }
 }

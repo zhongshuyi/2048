@@ -6,7 +6,7 @@ max_games = 500
 cleanup_interval = 300
 
 [redis]
-enabled = true
+enabled = false
 url = "redis://localhost:6379"
 
 [logging]

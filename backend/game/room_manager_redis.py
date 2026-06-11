@@ -6,6 +6,7 @@ import time
 from collections import deque
 
 import redis.asyncio as redis
+from game.engine import create_game as engine_create_game
 
 
 def _generate_code(length=6):
@@ -61,11 +62,34 @@ class RedisRoomManager:
     async def get_room(self, code):
         await self._ensure_connected()
         raw = await self.redis.hget("rooms", code)
-        return json.loads(raw) if raw else None
+        if not raw:
+            return None
+        room = json.loads(raw)
+        # Reconstruct WebSocket objects from stored IDs
+        if room.get("creator_id"):
+            room["creator_ws"] = self._get_ws(room["creator_id"])
+        if room.get("joiner_id"):
+            room["joiner_ws"] = self._get_ws(room["joiner_id"])
+        return room
+
+    async def set_room_creator(self, code, ws):
+        """Persist the creator WebSocket reference to Redis."""
+        await self._ensure_connected()
+        raw = await self.redis.hget("rooms", code)
+        if not raw:
+            return None
+        room = json.loads(raw)
+        ws_id = self._register_ws(ws)
+        room["creator_id"] = ws_id
+        room["creator_ws"] = ws  # also set locally for immediate use
+        await self.redis.hset("rooms", code, json.dumps(room))
+        self._rooms[code] = room
+        return room
 
     async def delete_room(self, code):
         await self._ensure_connected()
         await self.redis.hdel("rooms", code)
+        self._rooms.pop(code, None)
 
     async def join_room(self, code, ws):
         await self._ensure_connected()
@@ -78,6 +102,10 @@ class RedisRoomManager:
         room["state"] = "playing"
         ws_id = self._register_ws(ws)
         room["joiner_id"] = ws_id
+        room["joiner_ws"] = ws
+        # Reconstruct creator_ws from stored ID
+        if room.get("creator_id"):
+            room["creator_ws"] = self._get_ws(room["creator_id"])
         await self.redis.hset("rooms", code, json.dumps(room))
         self._rooms[code] = room
         return room
@@ -130,11 +158,17 @@ class RedisRoomManager:
         game_id = _generate_code(12)
         ws1_id = self._register_ws(ws1)
         ws2_id = self._register_ws(ws2)
+
+        # Create initial game states (same as in-memory RoomManager)
+        state1, _ = engine_create_game(grid_size)
+        state2, _ = engine_create_game(grid_size)
+
         game = {
             "id": game_id, "mode": mode, "gridSize": grid_size, "time": time_limit or 0,
             "player1_ws": ws1_id, "player2_ws": ws2_id,
             "player1_nick": nickname1, "player2_nick": nickname2,
             "player1_score": 0, "player2_score": 0,
+            "player1_state": json.dumps(state1), "player2_state": json.dumps(state2),
             "start_time": time.time(), "finished": False,
         }
         await self.redis.hset("games", game_id, json.dumps(game))
@@ -200,11 +234,13 @@ class RedisRoomManager:
         """Build game object with actual WebSocket references for server handlers."""
         ws1 = self._get_ws(ws1_id)
         ws2 = self._get_ws(ws2_id)
+        p1_state = json.loads(raw.get("player1_state", "{}")) if isinstance(raw.get("player1_state"), str) else raw.get("player1_state", {})
+        p2_state = json.loads(raw.get("player2_state", "{}")) if isinstance(raw.get("player2_state"), str) else raw.get("player2_state", {})
         return {
             "id": raw["id"], "mode": raw["mode"], "gridSize": raw["gridSize"],
             "time": raw["time"], "finished": raw.get("finished", False),
-            "player1": {"ws": ws1, "nickname": raw["player1_nick"], "state": {}, "score": raw.get("player1_score", 0)},
-            "player2": {"ws": ws2, "nickname": raw["player2_nick"], "state": {}, "score": raw.get("player2_score", 0)},
+            "player1": {"ws": ws1, "nickname": raw["player1_nick"], "state": p1_state, "score": raw.get("player1_score", 0)},
+            "player2": {"ws": ws2, "nickname": raw["player2_nick"], "state": p2_state, "score": raw.get("player2_score", 0)},
             "start_time": raw.get("start_time", 0), "rematch_requested": set(),
         }
 

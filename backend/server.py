@@ -56,13 +56,13 @@ async def create_room(body: dict):
     time_limit = body.get("time") if mode == "timed" else None
     if mode == "timed" and (not isinstance(time_limit, int) or time_limit <= 0):
         return {"error": "Invalid time"}, 400
-    code = manager.create_room(mode, grid_size, time_limit)
+    code = await manager.create_room(mode, grid_size, time_limit)
     return {"room_code": code}
 
 
 @app.get("/api/rooms/{code}")
 async def get_room(code: str):
-    room = manager.get_room(code)
+    room = await manager.get_room(code)
     if not room:
         return {"error": "Room not found"}, 404
     return {
@@ -122,9 +122,8 @@ async def handle_create_room(ws, data):
     nickname = data.get("nickname", "Anonymous")
     ws_meta[ws]["nickname"] = nickname
 
-    code = manager.create_room(mode, grid_size, time_limit)
-    room = manager.get_room(code)
-    room["creator_ws"] = ws
+    code = await manager.create_room(mode, grid_size, time_limit)
+    room = await manager.set_room_creator(code, ws)
     ws_meta[ws]["room_code"] = code
 
     await ws.send_json({"type": "waiting", "room_code": code})
@@ -135,7 +134,7 @@ async def handle_join_room(ws, data):
     nickname = data.get("nickname", "Anonymous")
     ws_meta[ws]["nickname"] = nickname
 
-    room = manager.join_room(code, ws)
+    room = await manager.join_room(code, ws)
     if not room:
         await ws.send_json({"type": "error", "message": "Room not found or already started"})
         return
@@ -144,7 +143,7 @@ async def handle_join_room(ws, data):
     ws_meta[ws]["in_game"] = True
     ws_meta[creator_ws]["in_game"] = True
 
-    game = manager.create_game(
+    game = await manager.create_game(
         room["mode"], room["gridSize"], room.get("time"),
         ws_meta[creator_ws]["nickname"], nickname,
         creator_ws, ws,
@@ -187,7 +186,7 @@ async def handle_join_match(ws, data):
             await ws1.send_json({"type": "ping"})
         except Exception:
             # Waiting player already disconnected — put current back in queue
-            manager.enqueue_match(mode, grid_size, time_limit, ws2)
+            await manager.enqueue_match(mode, grid_size, time_limit, ws2)
             ws_meta.pop(ws1, None)
             await ws.send_json({"type": "waiting", "room_code": None})
             return
@@ -195,7 +194,7 @@ async def handle_join_match(ws, data):
         ws_meta[ws1]["in_game"] = True
         ws_meta[ws2]["in_game"] = True
 
-        game = manager.create_game(
+        game = await manager.create_game(
             mode, grid_size, time_limit,
             ws_meta[ws1]["nickname"], nickname,
             ws1, ws2,
@@ -212,12 +211,12 @@ async def handle_join_match(ws, data):
         return
 
     # No match yet — enqueue
-    manager.enqueue_match(mode, grid_size, time_limit, ws)
+    await manager.enqueue_match(mode, grid_size, time_limit, ws)
     await ws.send_json({"type": "waiting", "room_code": None})
 
 
 async def handle_move(ws, data):
-    game, player_num = manager.get_player_game(ws)
+    game, player_num = await manager.get_player_game(ws)
     if not game or game["finished"]:
         await ws.send_json({"type": "error", "message": "Not in a game"})
         return
@@ -264,7 +263,7 @@ async def handle_move(ws, data):
 
 
 async def handle_rematch(ws):
-    game, player_num = manager.get_player_game(ws)
+    game, player_num = await manager.get_player_game(ws)
     if not game:
         return
     if not game["finished"]:
@@ -276,9 +275,9 @@ async def handle_rematch(ws):
         player1 = game["player1"]
         player2 = game["player2"]
         old_id = game["id"]
-        manager.delete_game(old_id)
+        await manager.delete_game(old_id)
 
-        new_game = manager.create_game(
+        new_game = await manager.create_game(
             game["mode"], game["gridSize"], game.get("time"),
             player1["nickname"], player2["nickname"],
             player1["ws"], player2["ws"],
@@ -291,19 +290,19 @@ async def handle_rematch(ws):
 
 
 async def handle_cancel(ws):
-    manager.remove_from_queue(ws)
-    game, player_num = manager.get_player_game(ws)
+    await manager.remove_from_queue(ws)
+    game, player_num = await manager.get_player_game(ws)
     if game and not game["finished"]:
         opponent_num = 1 if player_num == 2 else 2
         await _end_game(game, winner=opponent_num, reason="forfeit")
     code = ws_meta.get(ws, {}).get("room_code")
     if code:
-        manager.delete_room(code)
+        await manager.delete_room(code)
     await ws.send_json({"type": "cancelled"})
 
 
 async def handle_disconnect(ws):
-    game, player_num = manager.get_player_game(ws)
+    game, player_num = await manager.get_player_game(ws)
     meta = ws_meta.pop(ws, {})
 
     if game and not game["finished"]:
@@ -320,7 +319,7 @@ async def handle_disconnect(ws):
         except Exception:
             pass
 
-    manager.cleanup_ws(ws)
+    await manager.cleanup_ws(ws)
 
 
 # --- Helpers ---
@@ -438,7 +437,7 @@ async def _end_game(game, winner=0, reason="time"):
 async def _game_timer(game_id, total_seconds):
     """Background task: wait for timer, end game if still running."""
     await asyncio.sleep(total_seconds)
-    game = manager.get_game(game_id)
+    game = await manager.get_game(game_id)
     if game and not game["finished"]:
         await _end_game(game, reason="time")
 

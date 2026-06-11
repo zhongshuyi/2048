@@ -68,6 +68,8 @@
 
     function onPointerDown(e) {
       if (activePointerId != null) return;
+      // Don't capture pointer when clicking overlay buttons
+      if (e.target && e.target.closest && e.target.closest("#overlay")) return;
       activePointerId = e.pointerId;
       try {
         if (el.setPointerCapture) el.setPointerCapture(activePointerId);
